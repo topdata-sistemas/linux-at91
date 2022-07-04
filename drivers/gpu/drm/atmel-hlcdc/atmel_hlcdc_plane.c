@@ -254,6 +254,9 @@ static u32 heo_upscaling_ycoef[] = {
 #define ATMEL_HLCDC_XPHIDEF	4
 #define ATMEL_HLCDC_YPHIDEF	4
 
+/*
+ * NOTE: Just skip the scaling in sam9x7 for now by not defining those registers
+ */
 static u32 atmel_hlcdc_plane_phiscaler_get_factor(u32 srcsize,
 						  u32 dstsize,
 						  u32 phidef)
@@ -337,23 +340,29 @@ atmel_hlcdc_plane_update_pos_and_size(struct atmel_hlcdc_plane *plane,
 
 	if (desc->layout.size)
 		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.size,
-					ATMEL_HLCDC_LAYER_SIZE(state->crtc_w,
-							       state->crtc_h));
+					    ATMEL_HLCDC_LAYER_SIZE(state->crtc_w,
+					    state->crtc_h));
 
 	if (desc->layout.memsize)
 		atmel_hlcdc_layer_write_cfg(&plane->layer,
-					desc->layout.memsize,
-					ATMEL_HLCDC_LAYER_SIZE(state->src_w,
-							       state->src_h));
+					    desc->layout.memsize,
+					    ATMEL_HLCDC_LAYER_SIZE(state->src_w,
+					    state->src_h));
 
 	if (desc->layout.pos)
 		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.pos,
-					ATMEL_HLCDC_LAYER_POS(state->crtc_x,
-							      state->crtc_y));
+					    ATMEL_HLCDC_LAYER_POS(state->crtc_x,
+					    state->crtc_y));
 
 	atmel_hlcdc_plane_setup_scaler(plane, state);
 }
 
+/*
+ * TODO: General cfg reigsters are totally different now
+ * They are different thanks to the new alpha blending function
+ * For now just map the DMA, REP, and DISCEN bits to where they belong on the
+ * new hardware and skip any blending
+ */
 static void
 atmel_hlcdc_plane_update_general_settings(struct atmel_hlcdc_plane *plane,
 					struct atmel_hlcdc_plane_state *state)
@@ -366,7 +375,7 @@ atmel_hlcdc_plane_update_general_settings(struct atmel_hlcdc_plane *plane,
 	 * Rotation optimization is not working on RGB888 (rotation is still
 	 * working but without any optimization).
 	 */
-	if (format->format == DRM_FORMAT_RGB888)
+	if (!IS_ENABLED(CONFIG_ATMEL_XLCDC) && format->format == DRM_FORMAT_RGB888)
 		cfg |= ATMEL_HLCDC_LAYER_DMA_ROTDIS;
 
 	atmel_hlcdc_layer_write_cfg(&plane->layer, ATMEL_HLCDC_LAYER_DMA_CFG,
@@ -374,7 +383,8 @@ atmel_hlcdc_plane_update_general_settings(struct atmel_hlcdc_plane *plane,
 
 	cfg = ATMEL_HLCDC_LAYER_DMA | ATMEL_HLCDC_LAYER_REP;
 
-	if (plane->base.type != DRM_PLANE_TYPE_PRIMARY) {
+	/* Don't support alpha blending for now on sam9x7 */
+	if (!IS_ENABLED(CONFIG_ATMEL_XLCDC) && plane->base.type != DRM_PLANE_TYPE_PRIMARY) {
 		cfg |= ATMEL_HLCDC_LAYER_OVR | ATMEL_HLCDC_LAYER_ITER2BL |
 		       ATMEL_HLCDC_LAYER_ITER;
 
@@ -436,6 +446,10 @@ static void atmel_hlcdc_plane_update_clut(struct atmel_hlcdc_plane *plane,
 	}
 }
 
+/*
+ * TODO: CHSR doesn't exist in sam9x7
+ * DMA now just used single frame buffer address, not descriptors
+ */
 static void atmel_hlcdc_plane_update_buffers(struct atmel_hlcdc_plane *plane,
 					struct atmel_hlcdc_plane_state *state)
 {
@@ -451,22 +465,27 @@ static void atmel_hlcdc_plane_update_buffers(struct atmel_hlcdc_plane *plane,
 
 		state->dscrs[i]->addr = gem->paddr + state->offsets[i];
 
-		atmel_hlcdc_layer_write_reg(&plane->layer,
-					    ATMEL_HLCDC_LAYER_PLANE_HEAD(i),
-					    state->dscrs[i]->self);
+		if (!IS_ENABLED(CONFIG_ATMEL_XLCDC)) {
+			atmel_hlcdc_layer_write_reg(&plane->layer,
+						    ATMEL_HLCDC_LAYER_PLANE_HEAD(i),
+						    state->dscrs[i]->self);
 
-		if (!(sr & ATMEL_HLCDC_LAYER_EN)) {
+			if (!(sr & ATMEL_HLCDC_LAYER_EN)) {
+				atmel_hlcdc_layer_write_reg(&plane->layer,
+							    ATMEL_HLCDC_LAYER_PLANE_ADDR(i),
+							    state->dscrs[i]->addr);
+				atmel_hlcdc_layer_write_reg(&plane->layer,
+							    ATMEL_HLCDC_LAYER_PLANE_CTRL(i),
+							    state->dscrs[i]->ctrl);
+				atmel_hlcdc_layer_write_reg(&plane->layer,
+							    ATMEL_HLCDC_LAYER_PLANE_NEXT(i),
+							    state->dscrs[i]->self);
+			}
+		} else {
 			atmel_hlcdc_layer_write_reg(&plane->layer,
-					ATMEL_HLCDC_LAYER_PLANE_ADDR(i),
-					state->dscrs[i]->addr);
-			atmel_hlcdc_layer_write_reg(&plane->layer,
-					ATMEL_HLCDC_LAYER_PLANE_CTRL(i),
-					state->dscrs[i]->ctrl);
-			atmel_hlcdc_layer_write_reg(&plane->layer,
-					ATMEL_HLCDC_LAYER_PLANE_NEXT(i),
-					state->dscrs[i]->self);
+						    ATMEL_HLCDC_LAYER_PLANE_ADDR(i),
+						    state->dscrs[i]->addr);
 		}
-
 		if (desc->layout.xstride[i])
 			atmel_hlcdc_layer_write_cfg(&plane->layer,
 						    desc->layout.xstride[i],
@@ -584,12 +603,12 @@ atmel_hlcdc_plane_update_disc_area(struct atmel_hlcdc_plane *plane,
 		return;
 
 	atmel_hlcdc_layer_write_cfg(&plane->layer, layout->disc_pos,
-				ATMEL_HLCDC_LAYER_DISC_POS(state->disc_x,
-							   state->disc_y));
+				    ATMEL_HLCDC_LAYER_DISC_POS(state->disc_x,
+				    state->disc_y));
 
 	atmel_hlcdc_layer_write_cfg(&plane->layer, layout->disc_size,
-				ATMEL_HLCDC_LAYER_DISC_SIZE(state->disc_w,
-							    state->disc_h));
+				    ATMEL_HLCDC_LAYER_DISC_SIZE(state->disc_w,
+				    state->disc_h));
 }
 
 static int atmel_hlcdc_plane_atomic_check(struct drm_plane *p,
@@ -711,6 +730,7 @@ static int atmel_hlcdc_plane_atomic_check(struct drm_plane *p,
 	return 0;
 }
 
+/* TODO: CHDR doesn't exist in sam9x7 */
 static void atmel_hlcdc_plane_atomic_disable(struct drm_plane *p,
 					     struct drm_atomic_state *state)
 {
@@ -721,15 +741,21 @@ static void atmel_hlcdc_plane_atomic_disable(struct drm_plane *p,
 				    0xffffffff);
 
 	/* Disable the layer */
-	atmel_hlcdc_layer_write_reg(&plane->layer, ATMEL_HLCDC_LAYER_CHDR,
-				    ATMEL_HLCDC_LAYER_RST |
-				    ATMEL_HLCDC_LAYER_A2Q |
-				    ATMEL_HLCDC_LAYER_UPDATE);
+	if (!IS_ENABLED(CONFIG_ATMEL_XLCDC))
+		atmel_hlcdc_layer_write_reg(&plane->layer,
+				ATMEL_HLCDC_LAYER_CHDR,
+				ATMEL_HLCDC_LAYER_RST |
+				ATMEL_HLCDC_LAYER_A2Q |
+				ATMEL_HLCDC_LAYER_UPDATE);
+	else
+		atmel_hlcdc_layer_write_reg(&plane->layer,
+				ATMEL_XLCDC_LAYER_CHER, 0);
 
 	/* Clear all pending interrupts */
 	atmel_hlcdc_layer_read_reg(&plane->layer, ATMEL_HLCDC_LAYER_ISR);
 }
 
+/* TODO: CHER and CHSR doesn't exist in sam9x7 */
 static void atmel_hlcdc_plane_atomic_update(struct drm_plane *p,
 					    struct drm_atomic_state *state)
 {
@@ -738,6 +764,7 @@ static void atmel_hlcdc_plane_atomic_update(struct drm_plane *p,
 	struct atmel_hlcdc_plane *plane = drm_plane_to_atmel_hlcdc_plane(p);
 	struct atmel_hlcdc_plane_state *hstate =
 			drm_plane_state_to_atmel_hlcdc_plane_state(new_s);
+	struct atmel_hlcdc_dc *dc = p->dev->dev_private;
 	u32 sr;
 
 	if (!new_s->crtc || !new_s->fb)
@@ -767,6 +794,14 @@ static void atmel_hlcdc_plane_atomic_update(struct drm_plane *p,
 			ATMEL_HLCDC_LAYER_UPDATE |
 			(sr & ATMEL_HLCDC_LAYER_EN ?
 			 ATMEL_HLCDC_LAYER_A2Q : ATMEL_HLCDC_LAYER_EN));
+	/*
+	 * FixMe: Quick fix to update the base layer,overlay-1,overlay-2 & High
+	 * end overlay attribute register.This is specific to 9x7 and needs to
+	 * be cleaned up.
+	 */
+	regmap_write(dc->hlcdc->regmap, ATMEL_HLCDC_ATTRE, ATMEL_HLCDC_BASE_UPDATE
+		     | ATMEL_HLCDC_OVR1_UPDATE | ATMEL_HLCDC_OVR3_UPDATE |
+		     ATMEL_HLCDC_HEO_UPDATE);
 }
 
 static int atmel_hlcdc_plane_init_properties(struct atmel_hlcdc_plane *plane)
