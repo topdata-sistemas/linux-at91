@@ -222,6 +222,19 @@
 		i2c-digital-filter-width-ns = <35>;
 		status = "okay";
 
+		/* R-pi Panel Touchscreen Control */
+		ft5406: ts@38 {
+			compatible = "edt,edt-ft5506";
+			reg = <0x38>;
+			touchscreen-size-x = <800>;
+			touchscreen-size-y = <480>;
+			vcc-supply = <&reg_display>;
+			reset-gpio = <&reg_display 1 1>;
+			touchscreen-inverted-x;
+			touchscreen-inverted-y;
+			status = "okay";
+		};
+
 		mcp16502@5b {
 			compatible = "microchip,mcp16502";
 			reg = <0x5b>;
