@@ -293,7 +293,7 @@ static const struct {
 			.n = "lvdspll_fracck",
 			.p = "main_osc",
 			.l = &pll_frac_layout,
-			.f = CLK_SET_RATE_GATE,
+			.f = 0,
 			.c = &lvdspll_characteristics,
 			.t = PLL_TYPE_FRAC,
 		},
@@ -302,8 +302,7 @@ static const struct {
 			.n = "lvdspll_divpmcck",
 			.p = "lvdspll_fracck",
 			.l = &pll_divpmc_layout,
-			.f = CLK_SET_RATE_GATE | CLK_SET_PARENT_GATE |
-			     CLK_SET_RATE_PARENT,
+			.f = 0,
 			.c = &lvdspll_characteristics,
 			.t = PLL_TYPE_DIV,
 		},
