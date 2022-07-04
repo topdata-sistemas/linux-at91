@@ -246,6 +246,15 @@
 				};
 			};
 		};
+
+		/* ATTINY88 Panel Regulator for Raspberry Pi Display Backlight Control */
+		reg_display: reg_display@45 {
+			compatible = "raspberrypi,7inch-touchscreen-panel-regulator";
+			reg = <0x45>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			status = "okay";
+		};
 	};
 };
 
