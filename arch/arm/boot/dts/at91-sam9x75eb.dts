@@ -74,6 +74,33 @@
 		device_type = "memory";
 		reg = <0x20000000 0x10000000>;
 	};
+
+	panel {
+		compatible = "raspberrypi,7inch-dsi", "simple-panel";
+		backlight = <&reg_display>;
+		power-supply = <&reg_display>;
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+
+			panel_in: endpoint {
+				remote-endpoint = <&bridge_out>;
+			};
+		};
+	};
+
+	/* Fixed Regulator for the DSI to DPI Bridge */
+	reg_bridge: reg_bridge@0 {
+		compatible = "regulator-fixed";
+		regulator-name = "bridge_reg";
+		vin-supply = <&reg_display>;
+		gpio = <&reg_display 0 0>;
+		enable-active-high;
+		status = "okay";
+	};
 };
 
 &can0 {
@@ -104,6 +131,57 @@
 
 &dma0 {
 	status = "okay";
+};
+
+&dsi {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			dsi_in: endpoint {
+				remote-endpoint = <&hlcdc_panel_output>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			dsi_out: endpoint {
+				remote-endpoint = <&bridge_in>;
+			};
+		};
+	};
+
+	/* Toshiba TC358762 DSI to DPI Bridge present in Raspberry Pi Display */
+	bridge@0 {
+		reg = <0x0>;
+		compatible = "toshiba,tc358762";
+		vddc-supply = <&reg_bridge>;
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@0 {
+				reg = <0>;
+				bridge_in: endpoint {
+					remote-endpoint = <&dsi_out>;
+				};
+			};
+			port@1 {
+				reg = <1>;
+				bridge_out: endpoint {
+					remote-endpoint = <&panel_in>;
+				};
+			};
+		};
+	};
 };
 
 &ehci0 {
@@ -275,6 +353,26 @@
 
 &gpbr {
 	status = "okay";
+};
+
+&gpu {
+	status = "okay";
+};
+
+&hlcdc {
+	status = "okay";
+
+	hlcdc-display-controller {
+		port@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			hlcdc_panel_output: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&dsi_in>;
+			};
+		};
+	};
+
 };
 
 &i2s {
