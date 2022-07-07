@@ -2,7 +2,7 @@
 VERSION = 5
 PATCHLEVEL = 15
 SUBLEVEL = 32
-EXTRAVERSION = -sam9x7-early-1.0-rc2
+EXTRAVERSION = -linux4microchip+sam9x7-2022.07-rc3
 NAME = Trick or Treat
 
 # *DOCUMENTATION*
