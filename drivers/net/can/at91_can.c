@@ -449,7 +449,6 @@ static void at91_chip_stop(struct net_device *dev, enum can_state state)
 static netdev_tx_t at91_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct at91_priv *priv = netdev_priv(dev);
-	struct net_device_stats *stats = &dev->stats;
 	struct can_frame *cf = (struct can_frame *)skb->data;
 	unsigned int mb, prio;
 	u32 reg_mid, reg_mcr;
@@ -468,7 +467,7 @@ static netdev_tx_t at91_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	}
 	reg_mid = at91_can_id_to_reg_mid(cf->can_id);
 	reg_mcr = ((cf->can_id & CAN_RTR_FLAG) ? AT91_MCR_MRTR : 0) |
-		(cf->can_dlc << 16) | AT91_MCR_MTCR;
+		(cf->len << 16) | AT91_MCR_MTCR;
 
 	/* disable MB while writing ID (see datasheet) */
 	set_mb_mode(priv, mb, AT91_MB_MODE_DISABLED);
@@ -481,10 +480,8 @@ static netdev_tx_t at91_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	/* This triggers transmission */
 	at91_write(priv, AT91_MCR(mb), reg_mcr);
 
-	stats->tx_bytes += cf->can_dlc;
-
 	/* _NOTE_: subtract AT91_MB_TX_FIRST offset from mb! */
-	can_put_echo_skb(skb, dev, mb - get_mb_tx_first(priv));
+	can_put_echo_skb(skb, dev, mb - get_mb_tx_first(priv), 0);
 
 	/*
 	 * we have to stop the queue and deliver all messages in case
@@ -553,8 +550,6 @@ static void at91_rx_overflow_err(struct net_device *dev)
 	cf->can_id |= CAN_ERR_CRTL;
 	cf->data[1] = CAN_ERR_CRTL_RX_OVERFLOW;
 
-	stats->rx_packets++;
-	stats->rx_bytes += cf->can_dlc;
 	netif_receive_skb(skb);
 }
 
@@ -580,7 +575,7 @@ static void at91_read_mb(struct net_device *dev, unsigned int mb,
 		cf->can_id = (reg_mid >> 18) & CAN_SFF_MASK;
 
 	reg_msr = at91_read(priv, AT91_MSR(mb));
-	cf->can_dlc = get_can_dlc((reg_msr >> 16) & 0xf);
+	cf->len = can_cc_dlc2len((reg_msr >> 16) & 0xf);
 
 	if (reg_msr & AT91_MSR_MRTR)
 		cf->can_id |= CAN_RTR_FLAG;
@@ -619,7 +614,9 @@ static void at91_read_msg(struct net_device *dev, unsigned int mb)
 	at91_read_mb(dev, mb, cf);
 
 	stats->rx_packets++;
-	stats->rx_bytes += cf->can_dlc;
+	if (!(cf->can_id & CAN_RTR_FLAG))
+		stats->rx_bytes += cf->len;
+
 	netif_receive_skb(skb);
 
 	can_led_event(dev, CAN_LED_EVENT_RX);
@@ -779,8 +776,6 @@ static int at91_poll_err(struct net_device *dev, int quota, u32 reg_sr)
 
 	at91_poll_err_frame(dev, cf, reg_sr);
 
-	dev->stats.rx_packets++;
-	dev->stats.rx_bytes += cf->can_dlc;
 	netif_receive_skb(skb);
 
 	return 1;
@@ -856,7 +851,10 @@ static void at91_irq_tx(struct net_device *dev, u32 reg_sr)
 		if (likely(reg_msr & AT91_MSR_MRDY &&
 			   ~reg_msr & AT91_MSR_MABT)) {
 			/* _NOTE_: subtract AT91_MB_TX_FIRST offset from mb! */
-			can_get_echo_skb(dev, mb - get_mb_tx_first(priv));
+			dev->stats.tx_bytes +=
+				can_get_echo_skb(dev,
+						 mb - get_mb_tx_first(priv),
+						 NULL);
 			dev->stats.tx_packets++;
 			can_led_event(dev, CAN_LED_EVENT_TX);
 		}
@@ -1046,8 +1044,6 @@ static void at91_irq_err(struct net_device *dev)
 
 	at91_irq_err_state(dev, cf, new_state);
 
-	dev->stats.rx_packets++;
-	dev->stats.rx_bytes += cf->can_dlc;
 	netif_rx(skb);
 
 	priv->can.state = new_state;

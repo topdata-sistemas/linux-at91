@@ -426,7 +426,7 @@ static void m_can_clean(struct net_device *net)
 			putidx = ((m_can_read(cdev, M_CAN_TXFQS) &
 				   TXFQS_TFQPI_MASK) >> TXFQS_TFQPI_SHIFT);
 
-		can_free_echo_skb(cdev->net, putidx);
+		can_free_echo_skb(cdev->net, putidx, NULL);
 		cdev->tx_skb = NULL;
 	}
 }
@@ -453,9 +453,9 @@ static void m_can_read_fifo(struct net_device *dev, u32 rxfs)
 	}
 
 	if (dlc & RX_BUF_FDF)
-		cf->len = can_dlc2len((dlc >> 16) & 0x0F);
+		cf->len = can_fd_dlc2len((dlc >> 16) & 0x0F);
 	else
-		cf->len = get_can_dlc((dlc >> 16) & 0x0F);
+		cf->len = can_cc_dlc2len((dlc >> 16) & 0x0F);
 
 	id = m_can_fifo_read(cdev, fgi, M_CAN_FIFO_ID);
 	if (id & RX_BUF_XTD)
@@ -478,13 +478,13 @@ static void m_can_read_fifo(struct net_device *dev, u32 rxfs)
 			*(u32 *)(cf->data + i) =
 				m_can_fifo_read(cdev, fgi,
 						M_CAN_FIFO_DATA(i / 4));
+
+		stats->rx_bytes += cf->len;
 	}
+	stats->rx_packets++;
 
 	/* acknowledge rx fifo 0 */
 	m_can_write(cdev, M_CAN_RXF0A, fgi);
-
-	stats->rx_packets++;
-	stats->rx_bytes += cf->len;
 
 	netif_receive_skb(skb);
 }
@@ -588,8 +588,6 @@ static int m_can_handle_lec_err(struct net_device *dev,
 		break;
 	}
 
-	stats->rx_packets++;
-	stats->rx_bytes += cf->can_dlc;
 	netif_receive_skb(skb);
 
 	return 1;
@@ -651,7 +649,6 @@ static int m_can_handle_state_change(struct net_device *dev,
 				     enum can_state new_state)
 {
 	struct m_can_classdev *cdev = netdev_priv(dev);
-	struct net_device_stats *stats = &dev->stats;
 	struct can_frame *cf;
 	struct sk_buff *skb;
 	struct can_berr_counter bec;
@@ -715,8 +712,6 @@ static int m_can_handle_state_change(struct net_device *dev,
 		break;
 	}
 
-	stats->rx_packets++;
-	stats->rx_bytes += cf->can_dlc;
 	netif_receive_skb(skb);
 
 	return 1;
@@ -935,7 +930,7 @@ static void m_can_echo_tx_event(struct net_device *dev)
 						(fgi << TXEFA_EFAI_SHIFT)));
 
 		/* update stats */
-		stats->tx_bytes += can_get_echo_skb(dev, msg_mark);
+		stats->tx_bytes += can_get_echo_skb(dev, msg_mark, NULL);
 		stats->tx_packets++;
 	}
 }
@@ -977,7 +972,7 @@ static irqreturn_t m_can_isr(int irq, void *dev_id)
 	if (cdev->version == 30) {
 		if (ir & IR_TC) {
 			/* Transmission Complete Interrupt*/
-			stats->tx_bytes += can_get_echo_skb(dev, 0);
+			stats->tx_bytes += can_get_echo_skb(dev, 0, NULL);
 			stats->tx_packets++;
 			can_led_event(dev, CAN_LED_EVENT_TX);
 			netif_wake_queue(dev);
@@ -1327,7 +1322,7 @@ static bool m_can_niso_supported(struct m_can_classdev *cdev)
 static int m_can_dev_setup(struct m_can_classdev *m_can_dev)
 {
 	struct net_device *dev = m_can_dev->net;
-	int m_can_version;
+	int m_can_version, err;
 
 	m_can_version = m_can_check_core_release(m_can_dev);
 	/* return if unsupported version */
@@ -1357,7 +1352,9 @@ static int m_can_dev_setup(struct m_can_classdev *m_can_dev)
 	switch (m_can_dev->version) {
 	case 30:
 		/* CAN_CTRLMODE_FD_NON_ISO is fixed with M_CAN IP v3.0.x */
-		can_set_static_ctrlmode(dev, CAN_CTRLMODE_FD_NON_ISO);
+		err = can_set_static_ctrlmode(dev, CAN_CTRLMODE_FD_NON_ISO);
+		if (err)
+			return err;
 		m_can_dev->can.bittiming_const = m_can_dev->bit_timing ?
 			m_can_dev->bit_timing : &m_can_bittiming_const_30X;
 
@@ -1367,7 +1364,9 @@ static int m_can_dev_setup(struct m_can_classdev *m_can_dev)
 		break;
 	case 31:
 		/* CAN_CTRLMODE_FD_NON_ISO is fixed with M_CAN IP v3.1.x */
-		can_set_static_ctrlmode(dev, CAN_CTRLMODE_FD_NON_ISO);
+		err = can_set_static_ctrlmode(dev, CAN_CTRLMODE_FD_NON_ISO);
+		if (err)
+			return err;
 		m_can_dev->can.bittiming_const = m_can_dev->bit_timing ?
 			m_can_dev->bit_timing : &m_can_bittiming_const_31X;
 
@@ -1484,7 +1483,7 @@ static netdev_tx_t m_can_tx_handler(struct m_can_classdev *cdev)
 		/* message ram configuration */
 		m_can_fifo_write(cdev, 0, M_CAN_FIFO_ID, id);
 		m_can_fifo_write(cdev, 0, M_CAN_FIFO_DLC,
-				 can_len2dlc(cf->len) << 16);
+				 can_fd_len2dlc(cf->len) << 16);
 
 		for (i = 0; i < cf->len; i += 4)
 			m_can_fifo_write(cdev, 0,
@@ -1508,7 +1507,7 @@ static netdev_tx_t m_can_tx_handler(struct m_can_classdev *cdev)
 		}
 		m_can_write(cdev, M_CAN_TXBTIE, 0x1);
 
-		can_put_echo_skb(skb, dev, 0);
+		can_put_echo_skb(skb, dev, 0, 0);
 
 		m_can_write(cdev, M_CAN_TXBAR, 0x1);
 		/* End of xmit function for version 3.0.x */
@@ -1553,7 +1552,7 @@ static netdev_tx_t m_can_tx_handler(struct m_can_classdev *cdev)
 		m_can_fifo_write(cdev, putidx, M_CAN_FIFO_DLC,
 				 ((putidx << TX_BUF_MM_SHIFT) &
 				  TX_BUF_MM_MASK) |
-				 (can_len2dlc(cf->len) << 16) |
+				 (can_fd_len2dlc(cf->len) << 16) |
 				 fdflags | TX_BUF_EFC);
 
 		for (i = 0; i < cf->len; i += 4)
@@ -1563,7 +1562,7 @@ static netdev_tx_t m_can_tx_handler(struct m_can_classdev *cdev)
 		/* Push loopback echo.
 		 * Will be looped back on TX interrupt based on message marker
 		 */
-		can_put_echo_skb(skb, dev, putidx);
+		can_put_echo_skb(skb, dev, putidx, 0);
 
 		/* Enable TX FIFO element to start transfer  */
 		m_can_write(cdev, M_CAN_TXBAR, (1 << putidx));

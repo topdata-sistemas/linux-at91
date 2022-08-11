@@ -596,8 +596,6 @@ static int pcan_usb_decode_error(struct pcan_usb_msg_context *mc, u8 n,
 				     &hwts->hwtstamp);
 	}
 
-	mc->netdev->stats.rx_packets++;
-	mc->netdev->stats.rx_bytes += cf->can_dlc;
 	netif_rx(skb);
 
 	return 0;
@@ -736,7 +734,7 @@ static int pcan_usb_decode_data(struct pcan_usb_msg_context *mc, u8 status_len)
 		cf->can_id = le16_to_cpu(tmp16) >> 5;
 	}
 
-	cf->can_dlc = get_can_dlc(rec_len);
+	cf->len = can_cc_dlc2len(rec_len);
 
 	/* Only first packet timestamp is a word */
 	if (pcan_usb_decode_ts(mc, !mc->rec_ts_idx))
@@ -753,17 +751,18 @@ static int pcan_usb_decode_data(struct pcan_usb_msg_context *mc, u8 status_len)
 		if ((mc->ptr + rec_len) > mc->end)
 			goto decode_failed;
 
-		memcpy(cf->data, mc->ptr, cf->can_dlc);
+		memcpy(cf->data, mc->ptr, cf->len);
 		mc->ptr += rec_len;
+
+		/* update statistics */
+		mc->netdev->stats.rx_bytes += cf->len;
 	}
+	mc->netdev->stats.rx_packets++;
 
 	/* convert timestamp into kernel time */
 	hwts = skb_hwtstamps(skb);
 	peak_usb_get_ts_time(&mc->pdev->time_ref, mc->ts16, &hwts->hwtstamp);
 
-	/* update statistics */
-	mc->netdev->stats.rx_packets++;
-	mc->netdev->stats.rx_bytes += cf->can_dlc;
 	/* push the skb */
 	netif_rx(skb);
 
@@ -840,7 +839,7 @@ static int pcan_usb_encode_msg(struct peak_usb_device *dev, struct sk_buff *skb,
 	pc = obuf + PCAN_USB_MSG_HEADER_LEN;
 
 	/* status/len byte */
-	*pc = cf->can_dlc;
+	*pc = cf->len;
 	if (cf->can_id & CAN_RTR_FLAG)
 		*pc |= PCAN_USB_STATUSLEN_RTR;
 
@@ -860,8 +859,8 @@ static int pcan_usb_encode_msg(struct peak_usb_device *dev, struct sk_buff *skb,
 
 	/* can data */
 	if (!(cf->can_id & CAN_RTR_FLAG)) {
-		memcpy(pc, cf->data, cf->can_dlc);
-		pc += cf->can_dlc;
+		memcpy(pc, cf->data, cf->len);
+		pc += cf->len;
 	}
 
 	obuf[(*size)-1] = (u8)(stats->tx_packets & 0xff);
