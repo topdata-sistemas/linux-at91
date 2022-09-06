@@ -3692,13 +3692,13 @@ static const struct panel_desc qd43003c0_40 = {
 static const struct drm_display_mode raspberrypi_7inch_mode = {
 	.clock = 25979400 / 1000,
 	.hdisplay = 800,
-	.hsync_start = 800 + 2,
-	.hsync_end = 800 + 2 + 2,
-	.htotal = 800 + 2 + 2 + 46,
+	.hsync_start = 800 + 210,
+	.hsync_end = 800 + 210 + 2,
+	.htotal = 800 + 210 + 2 + 48,
 	.vdisplay = 480,
-	.vsync_start = 480 + 7,
-	.vsync_end = 480 + 7 + 2,
-	.vtotal = 480 + 7 + 2 + 21,
+	.vsync_start = 480 + 22,
+	.vsync_end = 480 + 22 + 2,
+	.vtotal = 480 + 22 + 2 + 25,
 	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
 };
 
