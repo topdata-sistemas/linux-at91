@@ -34,9 +34,7 @@
 struct atmel_hlcdc_crtc_state {
 	struct drm_crtc_state base;
 	unsigned int output_mode;
-#ifdef CONFIG_ATMEL_XLCDC
 	bool dpi;
-#endif
 };
 
 static inline struct atmel_hlcdc_crtc_state *
@@ -141,17 +139,15 @@ static void atmel_hlcdc_crtc_mode_set_nofb(struct drm_crtc *c)
 	 * FIXME: During the debug session, we made the CLKDIV value as 0 and made
 	 * the pixel clock value to 33Mhz to match the value stephane is using.
 	 */
-#ifdef CONFIG_ATMEL_XLCDC
-	cfg = 0x00000000;
-#endif
+	if (crtc->dc->xlcdc_status)
+		cfg = 0x00000000;
 
 	regmap_update_bits(regmap, ATMEL_HLCDC_CFG(0), mask, cfg);
 
 	state = drm_crtc_state_to_atmel_hlcdc_crtc_state(c->state);
 	cfg = state->output_mode << 8;
-#ifdef CONFIG_ATMEL_XLCDC
-	cfg |= state->dpi << 11;
-#endif
+	if (crtc->dc->xlcdc_status)
+		cfg |= state->dpi << 11;
 
 	if (adj->flags & DRM_MODE_FLAG_NVSYNC)
 		cfg |= ATMEL_HLCDC_VSPOL;
@@ -166,22 +162,29 @@ static void atmel_hlcdc_crtc_mode_set_nofb(struct drm_crtc *c)
 	 * image was gone, so he had to revert the change. We believe that the linux
 	 * configuration is the right one.
 	 */
-#ifdef CONFIG_ATMEL_XLCDC
-	cfg = 0x00000d04;
-#endif
+	if (crtc->dc->xlcdc_status)
+		cfg = 0x00000d04;
 
-	regmap_update_bits(regmap, ATMEL_HLCDC_CFG(5),
-			   ATMEL_HLCDC_HSPOL | ATMEL_HLCDC_VSPOL |
-			   ATMEL_HLCDC_VSPDLYS | ATMEL_HLCDC_VSPDLYE |
-			   ATMEL_HLCDC_DISPPOL | ATMEL_HLCDC_DISPDLY |
-			   ATMEL_HLCDC_VSPSU | ATMEL_HLCDC_VSPHO |
-#ifndef CONFIG_ATMEL_XLCDC
-			   ATMEL_HLCDC_GUARDTIME_MASK | ATMEL_HLCDC_MODE_MASK,
-#else
-			   ATMEL_HLCDC_GUARDTIME_MASK | ATMEL_HLCDC_MODE_MASK |
-			   ATMEL_HLCDC_DPI,
-#endif
-			   cfg);
+	if (!(crtc->dc->xlcdc_status)) {
+		regmap_update_bits(regmap, ATMEL_HLCDC_CFG(5),
+				ATMEL_HLCDC_HSPOL | ATMEL_HLCDC_VSPOL |
+				ATMEL_HLCDC_VSPDLYS | ATMEL_HLCDC_VSPDLYE |
+				ATMEL_HLCDC_DISPPOL | ATMEL_HLCDC_DISPDLY |
+				ATMEL_HLCDC_VSPSU | ATMEL_HLCDC_VSPHO |
+				ATMEL_HLCDC_GUARDTIME_MASK | ATMEL_HLCDC_MODE_MASK,
+				cfg);
+	}
+
+	if (crtc->dc->xlcdc_status) {
+		regmap_update_bits(regmap, ATMEL_HLCDC_CFG(5),
+				ATMEL_HLCDC_HSPOL | ATMEL_HLCDC_VSPOL |
+				ATMEL_HLCDC_VSPDLYS | ATMEL_HLCDC_VSPDLYE |
+				ATMEL_HLCDC_DISPPOL | ATMEL_HLCDC_DISPDLY |
+				ATMEL_HLCDC_VSPSU | ATMEL_HLCDC_VSPHO |
+				ATMEL_HLCDC_GUARDTIME_MASK | ATMEL_XLCDC_MODE_MASK |
+				ATMEL_XLCDC_DPI,
+				cfg);
+	}
 
 	clk_disable_unprepare(crtc->dc->hlcdc->sys_clk);
 }
@@ -207,14 +210,14 @@ static void atmel_hlcdc_crtc_atomic_disable(struct drm_crtc *c,
 
 	pm_runtime_get_sync(dev->dev);
 
-	if (IS_ENABLED(CONFIG_ATMEL_XLCDC)) {
-		regmap_write(regmap, ATMEL_HLCDC_DIS, ATMEL_HLCDC_CM);
+	if (crtc->dc->xlcdc_status) {
+		regmap_write(regmap, ATMEL_HLCDC_DIS, ATMEL_XLCDC_CM);
 		while (!regmap_read(regmap, ATMEL_HLCDC_SR, &status) &&
-		       (status & ATMEL_HLCDC_CM))
+		       (status & ATMEL_XLCDC_CM))
 			cpu_relax();
-		regmap_write(regmap, ATMEL_HLCDC_DIS, ATMEL_HLCDC_SD);
+		regmap_write(regmap, ATMEL_HLCDC_DIS, ATMEL_XLCDC_SD);
 		while (!regmap_read(regmap, ATMEL_HLCDC_SR, &status) &&
-		       !(status & ATMEL_HLCDC_SD))
+		       !(status & ATMEL_XLCDC_SD))
 			cpu_relax();
 	}
 
@@ -272,16 +275,16 @@ static void atmel_hlcdc_crtc_atomic_enable(struct drm_crtc *c,
 	       !(status & ATMEL_HLCDC_DISP))
 		cpu_relax();
 
-	if (IS_ENABLED(CONFIG_ATMEL_XLCDC)) {
-		regmap_write(regmap, ATMEL_HLCDC_EN, ATMEL_HLCDC_CM);
+	if (crtc->dc->xlcdc_status) {
+		regmap_write(regmap, ATMEL_HLCDC_EN, ATMEL_XLCDC_CM);
 		while (!regmap_read(regmap, ATMEL_HLCDC_SR, &status) &&
-		       !(status & ATMEL_HLCDC_CM))
+		       !(status & ATMEL_XLCDC_CM))
 			cpu_relax();
 
 		/*writing to the enable register clears the SD bit?? */
-		regmap_write(regmap, ATMEL_HLCDC_EN, ATMEL_HLCDC_SD);
+		regmap_write(regmap, ATMEL_HLCDC_EN, ATMEL_XLCDC_SD);
 		while (!regmap_read(regmap, ATMEL_HLCDC_SR, &status) &&
-		       (status & ATMEL_HLCDC_SD))
+		       (status & ATMEL_XLCDC_SD))
 			cpu_relax();
 	}
 
@@ -425,16 +428,15 @@ static int atmel_hlcdc_crtc_select_output_mode(struct drm_crtc_state *state)
 
 	hstate = drm_crtc_state_to_atmel_hlcdc_crtc_state(state);
 	hstate->output_mode = fls(output_fmts) - 1;
-#ifdef CONFIG_ATMEL_XLCDC
-	/* check if MIPI DPI bit needs to be set */
-	if (fls(output_fmts) > 3) {
-		hstate->output_mode -= 4;
-		hstate->dpi = true;
-	} else {
-		hstate->dpi = false;
+	if (crtc->dc->xlcdc_status) {
+		/* check if MIPI DPI bit needs to be set */
+		if (fls(output_fmts) > 3) {
+			hstate->output_mode -= 4;
+			hstate->dpi = true;
+		} else {
+			hstate->dpi = false;
+		}
 	}
-#endif
-
 	return 0;
 }
 
@@ -538,7 +540,7 @@ static struct drm_crtc_state *
 atmel_hlcdc_crtc_duplicate_state(struct drm_crtc *crtc)
 {
 	struct atmel_hlcdc_crtc_state *state, *cur;
-
+	struct atmel_hlcdc_crtc *c = drm_crtc_to_atmel_hlcdc_crtc(crtc);
 	if (WARN_ON(!crtc->state))
 		return NULL;
 
@@ -549,9 +551,8 @@ atmel_hlcdc_crtc_duplicate_state(struct drm_crtc *crtc)
 
 	cur = drm_crtc_state_to_atmel_hlcdc_crtc_state(crtc->state);
 	state->output_mode = cur->output_mode;
-#ifdef CONFIG_ATMEL_XLCDC
-	state->dpi = cur->dpi;
-#endif
+	if (c->dc->xlcdc_status)
+		state->dpi = cur->dpi;
 
 	return &state->base;
 }

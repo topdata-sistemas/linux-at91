@@ -434,6 +434,7 @@ struct atmel_hlcdc_dc {
 	} commit;
 	struct gfx2d_gpu *gpu;
 	struct platform_device *gpu_pdev;
+	int xlcdc_status;
 };
 
 extern struct atmel_hlcdc_formats atmel_hlcdc_plane_rgb_formats;
