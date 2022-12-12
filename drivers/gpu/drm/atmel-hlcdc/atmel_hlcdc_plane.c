@@ -394,25 +394,49 @@ atmel_hlcdc_plane_update_general_settings(struct atmel_hlcdc_plane *plane,
 	if ((!(dc->xlcdc_status)) && format->format == DRM_FORMAT_RGB888)
 		cfg |= ATMEL_HLCDC_LAYER_DMA_ROTDIS;
 
-	atmel_hlcdc_layer_write_cfg(&plane->layer, ATMEL_HLCDC_LAYER_DMA_CFG,
-				    cfg);
+	if (!(dc->xlcdc_status)) {
+		atmel_hlcdc_layer_write_cfg(&plane->layer, ATMEL_HLCDC_LAYER_DMA_CFG,
+					    cfg);
 
-	cfg = ATMEL_HLCDC_LAYER_DMA | ATMEL_HLCDC_LAYER_REP;
+		cfg = ATMEL_HLCDC_LAYER_DMA | ATMEL_HLCDC_LAYER_REP;
+	} else {
+		atmel_hlcdc_layer_write_cfg(&plane->layer, ATMEL_XLCDC_LAYER_DMA_CFG,
+					    cfg);
 
-	/* Don't support alpha blending for now on sam9x7 */
-	if (!(dc->xlcdc_status) && plane->base.type != DRM_PLANE_TYPE_PRIMARY) {
-		cfg |= ATMEL_HLCDC_LAYER_OVR | ATMEL_HLCDC_LAYER_ITER2BL |
-		       ATMEL_HLCDC_LAYER_ITER;
-
-		if (format->has_alpha)
-			cfg |= ATMEL_HLCDC_LAYER_LAEN;
-		else
-			cfg |= ATMEL_HLCDC_LAYER_GAEN |
-			       ATMEL_HLCDC_LAYER_GA(state->base.alpha);
+		cfg = ATMEL_XLCDC_LAYER_DMA | ATMEL_XLCDC_LAYER_REP;
 	}
 
-	if (state->disc_h && state->disc_w)
-		cfg |= ATMEL_HLCDC_LAYER_DISCEN;
+	if (plane->base.type != DRM_PLANE_TYPE_PRIMARY) {
+		if (!(dc->xlcdc_status)) {
+			cfg |= ATMEL_HLCDC_LAYER_OVR | ATMEL_HLCDC_LAYER_ITER2BL |
+				ATMEL_HLCDC_LAYER_ITER;
+
+			if (format->has_alpha)
+				cfg |= ATMEL_HLCDC_LAYER_LAEN;
+			else
+				cfg |= ATMEL_HLCDC_LAYER_GAEN |
+					ATMEL_HLCDC_LAYER_GA(state->base.alpha);
+		} else {
+			/*
+			 * sam9x7: To support Alpha Blending
+			 */
+			cfg |= ATMEL_XLCDC_LAYER_SFACTC_A0_MULT_AS |
+				ATMEL_XLCDC_LAYER_SFACTA_ONE |
+				ATMEL_XLCDC_LAYER_DFACTC_M_A0_MULT_AS |
+				ATMEL_XLCDC_LAYER_DFACTA_ONE;
+			if (format->has_alpha)
+				cfg |= ATMEL_XLCDC_LAYER_A0(0xff);
+			else
+				cfg |= ATMEL_XLCDC_LAYER_A0(state->base.alpha);
+		}
+	}
+
+	if (state->disc_h && state->disc_w) {
+		if (!(dc->xlcdc_status))
+			cfg |= ATMEL_HLCDC_LAYER_DISCEN;
+		else
+			cfg |= ATMEL_XLCDC_LAYER_DISCEN;
+	}
 
 	atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.general_config,
 				    cfg);
@@ -862,6 +886,7 @@ static void atmel_hlcdc_plane_atomic_update(struct drm_plane *p,
 static int atmel_hlcdc_plane_init_properties(struct atmel_hlcdc_plane *plane)
 {
 	const struct atmel_hlcdc_layer_desc *desc = plane->layer.desc;
+	struct atmel_hlcdc_dc *dc = plane->base.dev->dev_private;
 
 	if (desc->type == ATMEL_HLCDC_OVERLAY_LAYER ||
 	    desc->type == ATMEL_HLCDC_CURSOR_LAYER) {
@@ -885,7 +910,7 @@ static int atmel_hlcdc_plane_init_properties(struct atmel_hlcdc_plane *plane)
 			return ret;
 	}
 
-	if (desc->layout.csc) {
+	if (!(dc->xlcdc_status) && desc->layout.csc) {
 		/*
 		 * TODO: decare a "yuv-to-rgb-conv-factors" property to let
 		 * userspace modify these factors (using a BLOB property ?).

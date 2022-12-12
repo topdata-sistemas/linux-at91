@@ -542,6 +542,8 @@ static const struct atmel_hlcdc_layer_desc atmel_hlcdc_sam9x7_layers[] = {
 			.chroma_key = 10,
 			.chroma_key_mask = 11,
 			.general_config = 12,
+			.csc = 16,
+			.scaler_config = 23,
 		},
 		.clut_offset = 0x1300,
 	},
