@@ -254,9 +254,6 @@ static u32 heo_upscaling_ycoef[] = {
 #define ATMEL_HLCDC_XPHIDEF	4
 #define ATMEL_HLCDC_YPHIDEF	4
 
-/*
- * NOTE: Just skip the scaling in sam9x7 for now by not defining those registers
- */
 static u32 atmel_hlcdc_plane_phiscaler_get_factor(u32 srcsize,
 						  u32 dstsize,
 						  u32 phidef)
@@ -288,6 +285,7 @@ static void atmel_hlcdc_plane_setup_scaler(struct atmel_hlcdc_plane *plane,
 					   struct atmel_hlcdc_plane_state *state)
 {
 	const struct atmel_hlcdc_layer_desc *desc = plane->layer.desc;
+	struct atmel_hlcdc_dc *dc = plane->base.dev->dev_private;
 	u32 xfactor, yfactor;
 
 	if (!desc->layout.scaler_config)
@@ -299,37 +297,70 @@ static void atmel_hlcdc_plane_setup_scaler(struct atmel_hlcdc_plane *plane,
 		return;
 	}
 
-	if (desc->layout.phicoeffs.x) {
-		xfactor = atmel_hlcdc_plane_phiscaler_get_factor(state->src_w,
-							state->crtc_w,
-							ATMEL_HLCDC_XPHIDEF);
+	if (!(dc->xlcdc_status)) {
+		if (desc->layout.phicoeffs.x) {
+			xfactor = atmel_hlcdc_plane_phiscaler_get_factor(state->src_w,
+					state->crtc_w,
+					ATMEL_HLCDC_XPHIDEF);
 
-		yfactor = atmel_hlcdc_plane_phiscaler_get_factor(state->src_h,
-							state->crtc_h,
-							ATMEL_HLCDC_YPHIDEF);
+			yfactor = atmel_hlcdc_plane_phiscaler_get_factor(state->src_h,
+					state->crtc_h,
+					ATMEL_HLCDC_YPHIDEF);
 
-		atmel_hlcdc_plane_scaler_set_phicoeff(plane,
-				state->crtc_w < state->src_w ?
-				heo_downscaling_xcoef :
-				heo_upscaling_xcoef,
-				ARRAY_SIZE(heo_upscaling_xcoef),
-				desc->layout.phicoeffs.x);
+			atmel_hlcdc_plane_scaler_set_phicoeff(plane,
+					state->crtc_w < state->src_w ?
+					heo_downscaling_xcoef :
+					heo_upscaling_xcoef,
+					ARRAY_SIZE(heo_upscaling_xcoef),
+					desc->layout.phicoeffs.x);
 
-		atmel_hlcdc_plane_scaler_set_phicoeff(plane,
-				state->crtc_h < state->src_h ?
-				heo_downscaling_ycoef :
-				heo_upscaling_ycoef,
-				ARRAY_SIZE(heo_upscaling_ycoef),
-				desc->layout.phicoeffs.y);
+			atmel_hlcdc_plane_scaler_set_phicoeff(plane,
+					state->crtc_h < state->src_h ?
+					heo_downscaling_ycoef :
+					heo_upscaling_ycoef,
+					ARRAY_SIZE(heo_upscaling_ycoef),
+					desc->layout.phicoeffs.y);
+		} else {
+			xfactor = (1024 * state->src_w) / state->crtc_w;
+			yfactor = (1024 * state->src_h) / state->crtc_h;
+		}
+
+		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config,
+				ATMEL_HLCDC_LAYER_SCALER_ENABLE |
+				ATMEL_HLCDC_LAYER_SCALER_FACTORS(xfactor,
+					yfactor));
 	} else {
-		xfactor = (1024 * state->src_w) / state->crtc_w;
-		yfactor = (1024 * state->src_h) / state->crtc_h;
-	}
+		/*
+		 * sam9x7: To support High-End Overlay scaling
+		 */
+		/* xfactor = round[(2^20 * XMEMSIZE)/XSIZE)] */
+		xfactor = (1048576 * state->src_w) / state->crtc_w;
 
-	atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config,
-				    ATMEL_HLCDC_LAYER_SCALER_ENABLE |
-				    ATMEL_HLCDC_LAYER_SCALER_FACTORS(xfactor,
-								     yfactor));
+		/* yfactor = round[(2^20 * YMEMSIZE)/YSIZE)] */
+		yfactor = (1048576 * state->src_h) / state->crtc_h;
+
+		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config,
+				ATMEL_XLCDC_LAYER_VSCALER_LUMA_ENABLE |
+				ATMEL_XLCDC_LAYER_VSCALER_CHROMA_ENABLE |
+				ATMEL_XLCDC_LAYER_HSCALER_LUMA_ENABLE |
+				ATMEL_XLCDC_LAYER_HSCALER_CHROMA_ENABLE);
+
+		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 1,
+				yfactor);
+		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 2,
+				yfactor);
+		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 3,
+				xfactor);
+		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 4,
+				xfactor);
+		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.vxs_config,
+				ATMEL_XLCDC_LAYER_VXSYTAP2_ENABLE |
+				ATMEL_XLCDC_LAYER_VXSCTAP2_ENABLE);
+		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.hxs_config,
+				ATMEL_XLCDC_LAYER_HXSYTAP2_ENABLE |
+				ATMEL_XLCDC_LAYER_HXSCTAP2_ENABLE);
+
+	}
 }
 
 static void
