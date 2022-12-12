@@ -363,17 +363,6 @@ static void atmel_hlcdc_plane_setup_scaler(struct atmel_hlcdc_plane *plane,
 			atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 4,
 					xfactor);
 		}
-		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.vxs_config,
-				ATMEL_XLCDC_LAYER_VXSYCFG_ONE |
-				ATMEL_XLCDC_LAYER_VXSYTAP2_ENABLE |
-				ATMEL_XLCDC_LAYER_VXSCCFG_ONE |
-				ATMEL_XLCDC_LAYER_VXSCTAP2_ENABLE);
-		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.hxs_config,
-				ATMEL_XLCDC_LAYER_HXSYCFG_ONE |
-				ATMEL_XLCDC_LAYER_HXSYTAP2_ENABLE |
-				ATMEL_XLCDC_LAYER_HXSCCFG_ONE |
-				ATMEL_XLCDC_LAYER_HXSCTAP2_ENABLE);
-
 	}
 }
 
@@ -955,43 +944,62 @@ static int atmel_hlcdc_plane_init_properties(struct atmel_hlcdc_plane *plane)
 			return ret;
 	}
 
-	if (desc->layout.csc) {
-		if (!(dc->xlcdc_status)) {
-		/*
-		 * TODO: decare a "yuv-to-rgb-conv-factors" property to let
-		 * userspace modify these factors (using a BLOB property ?).
-		 */
+	if (!(dc->xlcdc_status)) {
+		if (desc->layout.csc) {
+			/*
+			 * TODO: decare a "yuv-to-rgb-conv-factors" property to let
+			 * userspace modify these factors (using a BLOB property ?).
+			 */
 			atmel_hlcdc_layer_write_cfg(&plane->layer,
-						    desc->layout.csc,
-						    0x4c900091);
+					desc->layout.csc,
+					0x4c900091);
 			atmel_hlcdc_layer_write_cfg(&plane->layer,
-						    desc->layout.csc + 1,
-						    0x7a5f5090);
+					desc->layout.csc + 1,
+					0x7a5f5090);
 			atmel_hlcdc_layer_write_cfg(&plane->layer,
-						    desc->layout.csc + 2,
-						    0x40040890);
-		} else {
+					desc->layout.csc + 2,
+					0x40040890);
+		}
+	} else {
+		if (desc->layout.csc) {
 			atmel_hlcdc_layer_write_cfg(&plane->layer,
-						    desc->layout.csc,
-						    0x00000488);
+					desc->layout.csc,
+					0x00000488);
 			atmel_hlcdc_layer_write_cfg(&plane->layer,
-						    desc->layout.csc + 1,
-						    0x00000648);
+					desc->layout.csc + 1,
+					0x00000648);
 			atmel_hlcdc_layer_write_cfg(&plane->layer,
-						    desc->layout.csc + 2,
-						    0x1EA00480);
+					desc->layout.csc + 2,
+					0x1EA00480);
 			atmel_hlcdc_layer_write_cfg(&plane->layer,
-						    desc->layout.csc + 3,
-						    0x00001D28);
+					desc->layout.csc + 3,
+					0x00001D28);
 			atmel_hlcdc_layer_write_cfg(&plane->layer,
-						    desc->layout.csc + 4,
-						    0x08100480);
+					desc->layout.csc + 4,
+					0x08100480);
 			atmel_hlcdc_layer_write_cfg(&plane->layer,
-						    desc->layout.csc + 5,
-						    0x00000000);
+					desc->layout.csc + 5,
+					0x00000000);
 			atmel_hlcdc_layer_write_cfg(&plane->layer,
-						    desc->layout.csc + 6,
-						    0x00000007);
+					desc->layout.csc + 6,
+					0x00000007);
+		}
+		if (desc->layout.vxs_config && desc->layout.hxs_config) {
+			/*
+			 * Fixes the Green Color Issue in sam9x7 EGT Video Player App
+			 */
+			atmel_hlcdc_layer_write_cfg(&plane->layer,
+					desc->layout.vxs_config,
+					ATMEL_XLCDC_LAYER_VXSYCFG_ONE |
+					ATMEL_XLCDC_LAYER_VXSYTAP2_ENABLE |
+					ATMEL_XLCDC_LAYER_VXSCCFG_ONE |
+					ATMEL_XLCDC_LAYER_VXSCTAP2_ENABLE);
+			atmel_hlcdc_layer_write_cfg(&plane->layer,
+					desc->layout.hxs_config,
+					ATMEL_XLCDC_LAYER_HXSYCFG_ONE |
+					ATMEL_XLCDC_LAYER_HXSYTAP2_ENABLE |
+					ATMEL_XLCDC_LAYER_HXSCCFG_ONE |
+					ATMEL_XLCDC_LAYER_HXSCTAP2_ENABLE);
 		}
 	}
 
