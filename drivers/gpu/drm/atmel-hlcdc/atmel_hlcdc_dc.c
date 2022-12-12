@@ -767,6 +767,14 @@ static int atmel_hlcdc_dc_load(struct drm_device *dev)
 	if (!dc)
 		return -ENOMEM;
 
+	/* check for sam9x60 */
+	if (strcmp(match->compatible, "microchip,sam9x60-hlcdc") == 0) {
+		dc->xlcdc_status = 0;
+	};
+	/* check for sam9x7 */
+	if (strcmp(match->compatible, "microchip,sam9x7-hlcdc") == 0) {
+		dc->xlcdc_status = 1;
+	};
 	dc->desc = match->data;
 	dc->hlcdc = dev_get_drvdata(dev->dev->parent);
 	dev->dev_private = dc;
