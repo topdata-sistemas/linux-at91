@@ -347,17 +347,31 @@ static void atmel_hlcdc_plane_setup_scaler(struct atmel_hlcdc_plane *plane,
 
 		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 1,
 				yfactor);
-		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 2,
-				yfactor);
 		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 3,
 				xfactor);
-		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 4,
-				xfactor);
+
+		/* As per YCbCr window resampling configuration */
+		if (state->base.fb->format->format == DRM_FORMAT_YUV420) {
+			atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 2,
+					yfactor/2);
+			atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 4,
+					xfactor/2);
+		} else {
+			/* As per ARGB window resampling configuration */
+			atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 2,
+					yfactor);
+			atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.scaler_config + 4,
+					xfactor);
+		}
 		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.vxs_config,
+				ATMEL_XLCDC_LAYER_VXSYCFG_ONE |
 				ATMEL_XLCDC_LAYER_VXSYTAP2_ENABLE |
+				ATMEL_XLCDC_LAYER_VXSCCFG_ONE |
 				ATMEL_XLCDC_LAYER_VXSCTAP2_ENABLE);
 		atmel_hlcdc_layer_write_cfg(&plane->layer, desc->layout.hxs_config,
+				ATMEL_XLCDC_LAYER_HXSYCFG_ONE |
 				ATMEL_XLCDC_LAYER_HXSYTAP2_ENABLE |
+				ATMEL_XLCDC_LAYER_HXSCCFG_ONE |
 				ATMEL_XLCDC_LAYER_HXSCTAP2_ENABLE);
 
 	}
