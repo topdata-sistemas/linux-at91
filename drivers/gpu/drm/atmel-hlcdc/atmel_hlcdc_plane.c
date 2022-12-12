@@ -941,20 +941,44 @@ static int atmel_hlcdc_plane_init_properties(struct atmel_hlcdc_plane *plane)
 			return ret;
 	}
 
-	if (!(dc->xlcdc_status) && desc->layout.csc) {
+	if (desc->layout.csc) {
+		if (!(dc->xlcdc_status)) {
 		/*
 		 * TODO: decare a "yuv-to-rgb-conv-factors" property to let
 		 * userspace modify these factors (using a BLOB property ?).
 		 */
-		atmel_hlcdc_layer_write_cfg(&plane->layer,
-					    desc->layout.csc,
-					    0x4c900091);
-		atmel_hlcdc_layer_write_cfg(&plane->layer,
-					    desc->layout.csc + 1,
-					    0x7a5f5090);
-		atmel_hlcdc_layer_write_cfg(&plane->layer,
-					    desc->layout.csc + 2,
-					    0x40040890);
+			atmel_hlcdc_layer_write_cfg(&plane->layer,
+						    desc->layout.csc,
+						    0x4c900091);
+			atmel_hlcdc_layer_write_cfg(&plane->layer,
+						    desc->layout.csc + 1,
+						    0x7a5f5090);
+			atmel_hlcdc_layer_write_cfg(&plane->layer,
+						    desc->layout.csc + 2,
+						    0x40040890);
+		} else {
+			atmel_hlcdc_layer_write_cfg(&plane->layer,
+						    desc->layout.csc,
+						    0x00000488);
+			atmel_hlcdc_layer_write_cfg(&plane->layer,
+						    desc->layout.csc + 1,
+						    0x00000648);
+			atmel_hlcdc_layer_write_cfg(&plane->layer,
+						    desc->layout.csc + 2,
+						    0x1EA00480);
+			atmel_hlcdc_layer_write_cfg(&plane->layer,
+						    desc->layout.csc + 3,
+						    0x00001D28);
+			atmel_hlcdc_layer_write_cfg(&plane->layer,
+						    desc->layout.csc + 4,
+						    0x08100480);
+			atmel_hlcdc_layer_write_cfg(&plane->layer,
+						    desc->layout.csc + 5,
+						    0x00000000);
+			atmel_hlcdc_layer_write_cfg(&plane->layer,
+						    desc->layout.csc + 6,
+						    0x00000007);
+		}
 	}
 
 	return 0;
