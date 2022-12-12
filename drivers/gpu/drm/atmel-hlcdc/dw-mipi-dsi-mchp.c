@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2022 Microchip Technology Inc. and its subsidiaries
+ *
+ * Author: Dan Sneddon <dan.sneddon@microchip.com>
+ */
 
 #include <drm/bridge/dw_mipi_dsi.h>
 #include <drm/drm_mipi_dsi.h>
@@ -246,11 +251,6 @@ static inline unsigned int ns2ui(struct dw_mipi_dsi_mchp *dsi, int ns)
 	return DIV_ROUND_UP(ns * dsi->lane_mbps, 1000);
 }
 
-/*
- * TODO: there is a lot of stuff in here that isn't in our datasheet or the
- * validation code. strip this down to just what is in the datasheet
- * validation code.
- */
 static int phy_init(void *priv_data)
 {
 	struct dw_mipi_dsi_mchp *dsi = priv_data;
@@ -284,10 +284,6 @@ static int phy_init(void *priv_data)
 	dw_mipi_dsi_phy_write(dsi, PLL_LPF_AND_CP_CONTROL,
 			      CP_PROGRAM_EN | LPF_PROGRAM_EN |
 			      LPF_RESISTORS_SEL(dppa_map[i].lpfctrl));
-#if 0
-	dw_mipi_dsi_phy_write(dsi, HS_RX_CONTROL_OF_LANE_0,
-			      HSFREQRANGE_SEL(dppa_map[i].hsfreqrange));
-#endif
 	dw_mipi_dsi_phy_write(dsi, PLL_INPUT_DIVIDER_RATIO,
 			      INPUT_DIVIDER(dsi->input_div));
 	dw_mipi_dsi_phy_write(dsi, PLL_LOOP_DIVIDER_RATIO,
@@ -301,50 +297,6 @@ static int phy_init(void *priv_data)
 			      HIGH_PROGRAM_EN);
 	dw_mipi_dsi_phy_write(dsi, PLL_INPUT_AND_LOOP_DIVIDER_RATIOS_CONTROL,
 			      PLL_LOOP_DIV_EN | PLL_INPUT_DIV_EN);
-#if 0
-	dw_mipi_dsi_phy_write(dsi, AFE_BIAS_BANDGAP_ANALOG_PROGRAMMABILITY,
-			      LOW_PROGRAM_EN | BIASEXTR_SEL(BIASEXTR_127_7));
-	dw_mipi_dsi_phy_write(dsi, AFE_BIAS_BANDGAP_ANALOG_PROGRAMMABILITY,
-			      HIGH_PROGRAM_EN | BANDGAP_SEL(BANDGAP_96_10));
-
-	dw_mipi_dsi_phy_write(dsi, BANDGAP_AND_BIAS_CONTROL,
-			      POWER_CONTROL | INTERNAL_REG_CURRENT |
-			      BIAS_BLOCK_ON | BANDGAP_ON);
-
-	dw_mipi_dsi_phy_write(dsi, TERMINATION_RESISTER_CONTROL,
-			      TER_RESISTOR_LOW | TER_CAL_DONE |
-			      SETRD_MAX | TER_RESISTORS_ON);
-	dw_mipi_dsi_phy_write(dsi, TERMINATION_RESISTER_CONTROL,
-			      TER_RESISTOR_HIGH | LEVEL_SHIFTERS_ON |
-			      SETRD_MAX | POWER_MANAGE |
-			      TER_RESISTORS_ON);
-
-	dw_mipi_dsi_phy_write(dsi, HS_TX_CLOCK_LANE_REQUEST_STATE_TIME_CONTROL,
-			      TLP_PROGRAM_EN | ns2bc(dsi, 500));
-	dw_mipi_dsi_phy_write(dsi, HS_TX_CLOCK_LANE_PREPARE_STATE_TIME_CONTROL,
-			      THS_PRE_PROGRAM_EN | ns2ui(dsi, 40));
-	dw_mipi_dsi_phy_write(dsi, HS_TX_CLOCK_LANE_HS_ZERO_STATE_TIME_CONTROL,
-			      THS_ZERO_PROGRAM_EN | ns2bc(dsi, 300));
-	dw_mipi_dsi_phy_write(dsi, HS_TX_CLOCK_LANE_TRAIL_STATE_TIME_CONTROL,
-			      THS_PRE_PROGRAM_EN | ns2ui(dsi, 100));
-	dw_mipi_dsi_phy_write(dsi, HS_TX_CLOCK_LANE_EXIT_STATE_TIME_CONTROL,
-			      BIT(5) | ns2bc(dsi, 100));
-	dw_mipi_dsi_phy_write(dsi, HS_TX_CLOCK_LANE_POST_TIME_CONTROL,
-			      BIT(5) | (ns2bc(dsi, 60) + 7));
-
-	dw_mipi_dsi_phy_write(dsi, HS_TX_DATA_LANE_REQUEST_STATE_TIME_CONTROL,
-			      TLP_PROGRAM_EN | ns2bc(dsi, 500));
-	dw_mipi_dsi_phy_write(dsi, HS_TX_DATA_LANE_PREPARE_STATE_TIME_CONTROL,
-			      THS_PRE_PROGRAM_EN | (ns2ui(dsi, 50) + 20));
-	dw_mipi_dsi_phy_write(dsi, HS_TX_DATA_LANE_HS_ZERO_STATE_TIME_CONTROL,
-			      THS_ZERO_PROGRAM_EN | (ns2bc(dsi, 140) + 2));
-	dw_mipi_dsi_phy_write(dsi, HS_TX_DATA_LANE_TRAIL_STATE_TIME_CONTROL,
-			      THS_PRE_PROGRAM_EN | (ns2ui(dsi, 60) + 8));
-	dw_mipi_dsi_phy_write(dsi, HS_TX_DATA_LANE_EXIT_STATE_TIME_CONTROL,
-			      BIT(5) | ns2bc(dsi, 100));
-#endif
-//	clk_disable_unprepare(dsi->pclk);
-
 	return ret;
 }
 
@@ -454,34 +406,34 @@ struct hstt {
 
 /* Table A-3 High-Speed Transition Times */
 struct hstt hstt_table[] = {
-	HSTT(  90,  32, 20,  26, 13),
-	HSTT( 100,  35, 23,  28, 14),
-	HSTT( 110,  32, 22,  26, 13),
-	HSTT( 130,  31, 20,  27, 13),
-	HSTT( 140,  33, 22,  26, 14),
-	HSTT( 150,  33, 21,  26, 14),
-	HSTT( 170,  32, 20,  27, 13),
-	HSTT( 180,  36, 23,  30, 15),
-	HSTT( 200,  40, 22,  33, 15),
-	HSTT( 220,  40, 22,  33, 15),
-	HSTT( 240,  44, 24,  36, 16),
-	HSTT( 250,  48, 24,  38, 17),
-	HSTT( 270,  48, 24,  38, 17),
-	HSTT( 300,  50, 27,  41, 18),
-	HSTT( 330,  56, 28,  45, 18),
-	HSTT( 360,  59, 28,  48, 19),
-	HSTT( 400,  61, 30,  50, 20),
-	HSTT( 450,  67, 31,  55, 21),
-	HSTT( 500,  73, 31,  59, 22),
-	HSTT( 550,  79, 36,  63, 24),
-	HSTT( 600,  83, 37,  68, 25),
-	HSTT( 650,  90, 38,  73, 27),
-	HSTT( 700,  95, 40,  77, 28),
-	HSTT( 750, 102, 40,  84, 28),
-	HSTT( 800, 106, 42,  87, 30),
-	HSTT( 850, 113, 44,  93, 31),
-	HSTT( 900, 118, 47,  98, 32),
-	HSTT( 950, 124, 47, 102, 34),
+	HSTT(90,  32, 20,  26, 13),
+	HSTT(100,  35, 23,  28, 14),
+	HSTT(110,  32, 22,  26, 13),
+	HSTT(130,  31, 20,  27, 13),
+	HSTT(140,  33, 22,  26, 14),
+	HSTT(150,  33, 21,  26, 14),
+	HSTT(170,  32, 20,  27, 13),
+	HSTT(180,  36, 23,  30, 15),
+	HSTT(200,  40, 22,  33, 15),
+	HSTT(220,  40, 22,  33, 15),
+	HSTT(240,  44, 24,  36, 16),
+	HSTT(250,  48, 24,  38, 17),
+	HSTT(270,  48, 24,  38, 17),
+	HSTT(300,  50, 27,  41, 18),
+	HSTT(330,  56, 28,  45, 18),
+	HSTT(360,  59, 28,  48, 19),
+	HSTT(400,  61, 30,  50, 20),
+	HSTT(450,  67, 31,  55, 21),
+	HSTT(500,  73, 31,  59, 22),
+	HSTT(550,  79, 36,  63, 24),
+	HSTT(600,  83, 37,  68, 25),
+	HSTT(650,  90, 38,  73, 27),
+	HSTT(700,  95, 40,  77, 28),
+	HSTT(750, 102, 40,  84, 28),
+	HSTT(800, 106, 42,  87, 30),
+	HSTT(850, 113, 44,  93, 31),
+	HSTT(900, 118, 47,  98, 32),
+	HSTT(950, 124, 47, 102, 34),
 	HSTT(1000, 130, 49, 107, 35),
 };
 
