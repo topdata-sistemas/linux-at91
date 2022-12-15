@@ -41,6 +41,7 @@
  * to expose the needed lib/bch.c helpers/functions and re-use them here.
  */
 
+#include <linux/clk.h>
 #include <linux/genalloc.h>
 #include <linux/iopoll.h>
 #include <linux/module.h>
@@ -143,6 +144,7 @@ struct atmel_pmecc_caps {
 	int nstrengths;
 	int el_offset;
 	bool correct_erased_chunks;
+	bool pmc_clk_ctrl;
 };
 
 struct atmel_pmecc {
@@ -906,6 +908,13 @@ static struct atmel_pmecc_caps at91sam9g45_caps = {
 	.el_offset = 0x8c,
 };
 
+static struct atmel_pmecc_caps sam9x7_caps = {
+	.strengths = atmel_pmecc_strengths,
+	.nstrengths = 5,
+	.el_offset = 0x8c,
+	.pmc_clk_ctrl = true,
+};
+
 static struct atmel_pmecc_caps sama5d4_caps = {
 	.strengths = atmel_pmecc_strengths,
 	.nstrengths = 5,
@@ -973,6 +982,7 @@ EXPORT_SYMBOL(devm_atmel_pmecc_get);
 
 static const struct of_device_id atmel_pmecc_match[] = {
 	{ .compatible = "atmel,at91sam9g45-pmecc", &at91sam9g45_caps },
+	{ .compatible = "microchip,sam9x7-pmecc", &sam9x7_caps },
 	{ .compatible = "atmel,sama5d4-pmecc", &sama5d4_caps },
 	{ .compatible = "atmel,sama5d2-pmecc", &sama5d2_caps },
 	{ /* sentinel */ }
@@ -984,6 +994,8 @@ static int atmel_pmecc_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	const struct atmel_pmecc_caps *caps;
 	struct atmel_pmecc *pmecc;
+	struct clk *pclk;
+	int ret;
 
 	caps = of_device_get_match_data(&pdev->dev);
 	if (!caps) {
@@ -991,9 +1003,27 @@ static int atmel_pmecc_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	if (caps->pmc_clk_ctrl) {
+		pclk = devm_clk_get(dev, NULL);
+		if (IS_ERR(pclk)) {
+			ret = PTR_ERR(pclk);
+			dev_err(dev, "failed to get pclk, ret = %d\n", ret);
+			return -EINVAL;
+		}
+
+		ret = clk_prepare_enable(pclk);
+		if (ret) {
+			dev_err(dev, "failed to enable pclk, ret = %d\n", ret);
+			return ret;
+		}
+	}
+
 	pmecc = atmel_pmecc_create(pdev, caps, 0, 1);
-	if (IS_ERR(pmecc))
+	if (IS_ERR(pmecc)) {
+		if (caps->pmc_clk_ctrl)
+			clk_disable_unprepare(pclk);
 		return PTR_ERR(pmecc);
+	}
 
 	platform_set_drvdata(pdev, pmecc);
 
