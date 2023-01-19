@@ -20,35 +20,8 @@
 #include <linux/platform_data/syscon.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
-#include <linux/types.h>
 #include <linux/mfd/syscon.h>
 #include <linux/slab.h>
-
-#define syscon_alloc(_dev, args...) ({					\
-	void *_ptr;							\
-	if (_dev)							\
-		_ptr = devm_kzalloc((_dev), args);			\
-	else								\
-		_ptr = kzalloc(args);					\
-	(_ptr);								\
-})
-
-#define syscon_get_resource(_pdev, _np, _idx, _res) ({			\
-	int _ret = -EINVAL;						\
-	if (_pdev) {							\
-		struct resource *_r;					\
-		_r = platform_get_resource((_pdev), IORESOURCE_MEM, (_idx));\
-		if (!_r) {						\
-			_ret = -ENOMEM;					\
-		} else {						\
-			(_res) = *_r;					\
-			_ret = 0;					\
-		}							\
-	} else if (_np) {						\
-		_ret = of_address_to_resource((_np), (_idx), &(_res));	\
-	}								\
-	(_ret);								\
-})
 
 static struct platform_driver syscon_driver;
 
@@ -67,93 +40,22 @@ static const struct regmap_config syscon_regmap_config = {
 	.reg_stride = 4,
 };
 
-static const struct regmap_access_table *
-syscon_prepare_regmap_access_table(struct platform_device *pdev,
-				   struct device_node *np, u32 reg_io_width,
-				   int entries)
+static void syscon_add(struct syscon *syscon)
 {
-	struct regmap_access_table *at;
-	struct regmap_range *yes_ranges, *no_ranges = NULL;
-	struct device *dev = pdev ? &pdev->dev : NULL;
-	struct resource res;
-	resource_size_t base_offset, offset;
-	int i, ret;
-
-	/* Allocate memory for access table. */
-	at = syscon_alloc(dev, sizeof(*at), GFP_KERNEL);
-	if (!at)
-		return ERR_PTR(-ENOMEM);
-
-	/* Allocate memory for allowed ranges. */
-	yes_ranges = syscon_alloc(dev, entries * sizeof(*yes_ranges),
-				  GFP_KERNEL);
-	if (!yes_ranges) {
-		ret = -ENOMEM;
-		goto free;
-	}
-
-	/* Allocate memory for invalid ranges. */
-	if (entries > 1) {
-		no_ranges = syscon_alloc(dev,
-					 (entries - 1) * sizeof(*no_ranges),
-					 GFP_KERNEL);
-		if (!no_ranges) {
-			ret = -ENOMEM;
-			goto free;
-		}
-	}
-
-	/* Populate allowed and invalid ranges. */
-	ret = syscon_get_resource(pdev, np, 0, res);
-	if (ret)
-		goto free;
-
-	base_offset = res.start;
-	yes_ranges[0].range_max = resource_size(&res) - reg_io_width;
-	if (entries > 1)
-		no_ranges[0].range_min = resource_size(&res);
-
-	for (i = 1; i < entries; i++) {
-		ret = syscon_get_resource(pdev, np, i, res);
-		if (ret)
-			goto free;
-
-		offset = res.start - base_offset;
-		yes_ranges[i].range_min = offset;
-		yes_ranges[i].range_max = offset + resource_size(&res) -
-					  reg_io_width;
-		if (i != entries - 1)
-			no_ranges[i].range_min = offset + resource_size(&res);
-		no_ranges[i - 1].range_max = offset - reg_io_width;
-	}
-
-	/* Store them to access table. */
-	at->yes_ranges = yes_ranges;
-	at->n_yes_ranges = entries;
-	at->no_ranges = no_ranges;
-	at->n_no_ranges = entries > 1 ? entries - 1 : 0;
-
-	return at;
-
-free:
-	if (!dev) {
-		kfree(no_ranges);
-		kfree(yes_ranges);
-		kfree(at);
-	}
-
-	return ERR_PTR(ret);
+	spin_lock(&syscon_list_slock);
+	list_add_tail(&syscon->list, &syscon_list);
+	spin_unlock(&syscon_list_slock);
 }
 
-static struct syscon *of_syscon_register(struct device_node *np, bool check_clk)
+static struct syscon *of_syscon_register_mmio(struct device_node *np,
+					      bool check_clk)
 {
 	struct clk *clk;
 	struct syscon *syscon;
 	struct regmap *regmap;
 	void __iomem *base;
-	const struct regmap_access_table *at;
 	u32 reg_io_width;
-	int ret, n_res = 0;
+	int ret;
 	struct regmap_config syscon_config = syscon_regmap_config;
 	struct resource res;
 
@@ -161,26 +63,8 @@ static struct syscon *of_syscon_register(struct device_node *np, bool check_clk)
 	if (!syscon)
 		return ERR_PTR(-ENOMEM);
 
-	/* Count the number of resources. */
-	while (of_address_to_resource(np, n_res, &res) == 0)
-		n_res++;
-	if (!n_res) {
+	if (of_address_to_resource(np, 0, &res)) {
 		ret = -ENOMEM;
-		goto err_map;
-	}
-
-	/*
-	 * search for reg-io-width property in DT. If it is not provided,
-	 * default to 4 bytes. regmap_init_mmio will return an error if values
-	 * are invalid so there is no need to check them here.
-	 */
-	ret = of_property_read_u32(np, "reg-io-width", &reg_io_width);
-	if (ret)
-		reg_io_width = 4;
-
-	at = syscon_prepare_regmap_access_table(NULL, np, reg_io_width, n_res);
-	if (IS_ERR(at)) {
-		ret = PTR_ERR(at);
 		goto err_map;
 	}
 
@@ -197,6 +81,15 @@ static struct syscon *of_syscon_register(struct device_node *np, bool check_clk)
 		syscon_config.val_format_endian = REGMAP_ENDIAN_LITTLE;
 	else if (of_property_read_bool(np, "native-endian"))
 		syscon_config.val_format_endian = REGMAP_ENDIAN_NATIVE;
+
+	/*
+	 * search for reg-io-width property in DT. If it is not provided,
+	 * default to 4 bytes. regmap_init_mmio will return an error if values
+	 * are invalid so there is no need to check them here.
+	 */
+	ret = of_property_read_u32(np, "reg-io-width", &reg_io_width);
+	if (ret)
+		reg_io_width = 4;
 
 	ret = of_hwspin_lock_get_id(np, 0);
 	if (ret > 0 || (IS_ENABLED(CONFIG_HWSPINLOCK) && ret == 0)) {
@@ -220,8 +113,7 @@ static struct syscon *of_syscon_register(struct device_node *np, bool check_clk)
 				       (u64)res.start);
 	syscon_config.reg_stride = reg_io_width;
 	syscon_config.val_bits = reg_io_width * 8;
-	syscon_config.wr_table = at;
-	syscon_config.rd_table = at;
+	syscon_config.max_register = resource_size(&res) - reg_io_width;
 
 	regmap = regmap_init_mmio(NULL, base, &syscon_config);
 	kfree(syscon_config.name);
@@ -248,10 +140,6 @@ static struct syscon *of_syscon_register(struct device_node *np, bool check_clk)
 	syscon->regmap = regmap;
 	syscon->np = np;
 
-	spin_lock(&syscon_list_slock);
-	list_add_tail(&syscon->list, &syscon_list);
-	spin_unlock(&syscon_list_slock);
-
 	return syscon;
 
 err_attach:
@@ -263,14 +151,52 @@ err_regmap:
 	iounmap(base);
 err_map:
 	kfree(syscon);
-	kfree(at->no_ranges);
-	kfree(at->yes_ranges);
-	kfree(at);
 	return ERR_PTR(ret);
 }
 
+#ifdef CONFIG_REGMAP_SMCCC
+static struct syscon *of_syscon_register_smccc(struct device_node *np)
+{
+	struct syscon *syscon;
+	struct regmap *regmap;
+	u32 reg_io_width = 4, smc_id;
+	int ret;
+	struct regmap_config syscon_config = syscon_regmap_config;
+
+	ret = of_property_read_u32(np, "arm,smc-id", &smc_id);
+	if (ret)
+		return ERR_PTR(-ENODEV);
+
+	syscon = kzalloc(sizeof(*syscon), GFP_KERNEL);
+	if (!syscon)
+		return ERR_PTR(-ENOMEM);
+
+	of_property_read_u32(np, "reg-io-width", &reg_io_width);
+
+	syscon_config.name = kasprintf(GFP_KERNEL, "%pOFn@smc%x", np, smc_id);
+	syscon_config.val_bits = reg_io_width * 8;
+
+	regmap = regmap_init_smccc(NULL, smc_id, &syscon_config);
+	if (IS_ERR(regmap)) {
+		ret = PTR_ERR(regmap);
+		goto err_regmap;
+	}
+
+	syscon->regmap = regmap;
+	syscon->np = np;
+
+	return syscon;
+
+err_regmap:
+	kfree(syscon_config.name);
+	kfree(syscon);
+
+	return ERR_PTR(ret);
+}
+#endif
+
 static struct regmap *device_node_get_regmap(struct device_node *np,
-					     bool check_clk)
+					     bool check_clk, bool use_smccc)
 {
 	struct syscon *entry, *syscon = NULL;
 
@@ -284,8 +210,19 @@ static struct regmap *device_node_get_regmap(struct device_node *np,
 
 	spin_unlock(&syscon_list_slock);
 
-	if (!syscon)
-		syscon = of_syscon_register(np, check_clk);
+	if (!syscon) {
+		if (use_smccc)
+#ifdef CONFIG_REGMAP_SMCCC
+			syscon = of_syscon_register_smccc(np);
+#else
+			syscon = NULL;
+#endif
+		else
+			syscon = of_syscon_register_mmio(np, check_clk);
+
+		if (!IS_ERR(syscon))
+			syscon_add(syscon);
+	}
 
 	if (IS_ERR(syscon))
 		return ERR_CAST(syscon);
@@ -295,16 +232,19 @@ static struct regmap *device_node_get_regmap(struct device_node *np,
 
 struct regmap *device_node_to_regmap(struct device_node *np)
 {
-	return device_node_get_regmap(np, false);
+	return device_node_get_regmap(np, false, false);
 }
 EXPORT_SYMBOL_GPL(device_node_to_regmap);
 
 struct regmap *syscon_node_to_regmap(struct device_node *np)
 {
-	if (!of_device_is_compatible(np, "syscon"))
-		return ERR_PTR(-EINVAL);
+	if (of_device_is_compatible(np, "syscon"))
+		return device_node_get_regmap(np, true, false);
 
-	return device_node_get_regmap(np, true);
+	if (of_device_is_compatible(np, "syscon-smc"))
+		return device_node_get_regmap(np, true, true);
+
+	return ERR_PTR(-EINVAL);
 }
 EXPORT_SYMBOL_GPL(syscon_node_to_regmap);
 
@@ -392,54 +332,106 @@ struct regmap *syscon_regmap_lookup_by_phandle_optional(struct device_node *np,
 }
 EXPORT_SYMBOL_GPL(syscon_regmap_lookup_by_phandle_optional);
 
-static int syscon_probe(struct platform_device *pdev)
+struct syscon_driver_data {
+	int (*probe_func)(struct platform_device *pdev, struct device *dev,
+			  struct syscon *syscon);
+};
+
+static int syscon_probe_mmio(struct platform_device *pdev,
+			     struct device *dev,
+			     struct syscon *syscon)
 {
-	struct device *dev = &pdev->dev;
-	struct syscon_platform_data *pdata = dev_get_platdata(dev);
-	struct syscon *syscon;
 	struct regmap_config syscon_config = syscon_regmap_config;
-	const struct regmap_access_table *at;
 	struct resource *res;
 	void __iomem *base;
-	int n_res = 0;
 
-	syscon = devm_kzalloc(dev, sizeof(*syscon), GFP_KERNEL);
-	if (!syscon)
-		return -ENOMEM;
-
-	/* Count the number of resources. */
-	while (platform_get_resource(pdev, IORESOURCE_MEM, n_res))
-		n_res++;
-	if (!n_res)
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res)
 		return -ENOENT;
 
 	base = devm_ioremap(dev, res->start, resource_size(res));
 	if (!base)
 		return -ENOMEM;
 
-	at = syscon_prepare_regmap_access_table(pdev, NULL, 4, n_res);
-	if (IS_ERR(at))
-		return PTR_ERR(at);
+	syscon_config.max_register = resource_size(res) - 4;
 
-	syscon_config.wr_table = at;
-	syscon_config.rd_table = at;
-	if (pdata)
-		syscon_config.name = pdata->label;
 	syscon->regmap = devm_regmap_init_mmio(dev, base, &syscon_config);
 	if (IS_ERR(syscon->regmap)) {
 		dev_err(dev, "regmap init failed\n");
 		return PTR_ERR(syscon->regmap);
 	}
 
-	platform_set_drvdata(pdev, syscon);
+	dev_dbg(dev, "regmap_mmio %pR registered\n", res);
 
-	dev_dbg(dev, "regmap %pR registered\n", res);
+	return 0;
+}
+
+static const struct syscon_driver_data syscon_mmio_data = {
+	.probe_func = &syscon_probe_mmio,
+};
+
+#ifdef CONFIG_REGMAP_SMCCC
+
+static int syscon_probe_smc(struct platform_device *pdev,
+			    struct device *dev,
+			    struct syscon *syscon)
+{
+	struct regmap_config syscon_config = syscon_regmap_config;
+	int smc_id, ret;
+
+	ret = of_property_read_u32(dev->of_node, "arm,smc-id", &smc_id);
+	if (!ret)
+		return -ENODEV;
+
+	syscon->regmap = devm_regmap_init_smccc(dev, smc_id, &syscon_config);
+	if (IS_ERR(syscon->regmap)) {
+		dev_err(dev, "regmap init failed\n");
+		return PTR_ERR(syscon->regmap);
+	}
+
+	dev_dbg(dev, "regmap_smccc %x registered\n", smc_id);
+
+	return 0;
+}
+
+static const struct syscon_driver_data syscon_smc_data = {
+	.probe_func = &syscon_probe_smc,
+};
+#endif
+
+static int syscon_probe(struct platform_device *pdev)
+{
+	int ret;
+	struct device *dev = &pdev->dev;
+	struct syscon_platform_data *pdata = dev_get_platdata(dev);
+	struct regmap_config syscon_config = syscon_regmap_config;
+	struct syscon *syscon;
+	const struct syscon_driver_data *driver_data;
+
+	if (pdata)
+		syscon_config.name = pdata->label;
+
+	syscon = devm_kzalloc(dev, sizeof(*syscon), GFP_KERNEL);
+	if (!syscon)
+		return -ENOMEM;
+
+	driver_data = (const struct syscon_driver_data *)
+				platform_get_device_id(pdev)->driver_data;
+
+	ret = driver_data->probe_func(pdev, dev, syscon);
+	if (ret)
+		return ret;
+
+	platform_set_drvdata(pdev, syscon);
 
 	return 0;
 }
 
 static const struct platform_device_id syscon_ids[] = {
-	{ "syscon", },
+	{ .name = "syscon",	.driver_data = (kernel_ulong_t)&syscon_mmio_data},
+#ifdef CONFIG_REGMAP_SMCCC
+	{ .name = "syscon-smc",	.driver_data = (kernel_ulong_t)&syscon_smc_data},
+#endif
 	{ }
 };
 

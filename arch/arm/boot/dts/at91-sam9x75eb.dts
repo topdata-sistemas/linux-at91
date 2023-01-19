@@ -101,6 +101,14 @@
 		enable-active-high;
 		status = "okay";
 	};
+
+	sound {
+		compatible = "mikroe,mikroe-proto";
+		model = "wm8731 @ sam9x75eb";
+		i2s-controller = <&i2s>;
+		audio-codec = <&wm8731>;
+		dai-format = "i2s";
+	};
 };
 
 &can0 {
@@ -193,6 +201,8 @@
 	status = "okay";
 
 	i2c7: i2c@600 {
+		#address-cells = <1>;
+		#size-cells = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_flx7_default>;
 		i2c-analog-filter;
@@ -201,10 +211,9 @@
 		status = "okay";
 
 		eeprom@53 {
-			compatible = "atmel,24c32";
+			compatible = "atmel,24c02";
 			reg = <0x53>;
 			pagesize = <16>;
-			size = <128>;
 			status = "okay";
 		};
 	};
@@ -215,6 +224,8 @@
 	status = "okay";
 
 	i2c10: i2c@600 {
+		#address-cells = <1>;
+		#size-cells = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_flx10_default>;
 		i2c-analog-filter;
@@ -346,6 +357,11 @@
 			#gpio-cells = <2>;
 			status = "okay";
 		};
+
+		wm8731: codec@1a {
+			compatible = "wlf,wm8731";
+			reg = <0x1a>;
+		};
 	};
 };
 
@@ -385,7 +401,6 @@
 			};
 		};
 	};
-
 };
 
 &i2s {

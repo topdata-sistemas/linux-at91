@@ -1050,6 +1050,9 @@ static int phylink_bringup_phy(struct phylink *pl, struct phy_device *phy,
 	if (phy_interrupt_is_valid(phy))
 		phy_request_interrupt(phy);
 
+	if (pl->config->mac_managed_pm)
+		phy->mac_managed_pm = true;
+
 	return 0;
 }
 
@@ -1891,6 +1894,16 @@ int phylink_ethtool_set_eee(struct phylink *pl, struct ethtool_eee *eee)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(phylink_ethtool_set_eee);
+
+/**
+ * phylink_init_phydev() - initialize phydev associated to phylink
+ * @pl: a pointer to a &struct phylink returned from phylink_create()
+ */
+int phylink_init_phydev(struct phylink *pl)
+{
+	return phy_init_hw(pl->phydev);
+}
+EXPORT_SYMBOL_GPL(phylink_init_phydev);
 
 /* This emulates MII registers for a fixed-mode phy operating as per the
  * passed in state. "aneg" defines if we report negotiation is possible.
