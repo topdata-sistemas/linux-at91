@@ -72,6 +72,14 @@
 	};
 };
 
+&adc {
+	vddana-supply = <&vddout25>;
+	vref-supply = <&vddout25>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_adc_default>;
+	status = "okay";
+};
+
 &can1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_can1_default>;
@@ -291,6 +299,11 @@
 };
 
 &pioA {
+	pinctrl_adc_default: adc_default {
+		pinmux = <PIN_PC5__GPIO>;
+		bias-disalbe;
+	};
+
 	pinctrl_can1_default: can1-default {
 		pinmux = <PIN_PD10__CANTX1>,
 			<PIN_PD11__CANRX1>;
