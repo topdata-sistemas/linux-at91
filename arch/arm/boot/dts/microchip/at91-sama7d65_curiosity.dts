@@ -110,6 +110,10 @@
 	status = "okay";
 };
 
+&dma2 {
+	status = "okay";
+};
+
 &flx6 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
 	status = "okay";
