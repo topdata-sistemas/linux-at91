@@ -253,6 +253,19 @@
 			};
 		};
 	};
+
+	eeprom0: eeprom0@51 {
+		compatible = "atmel,24mac02e4";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x51>;
+		pagesize = <16>;
+		size = <256>;
+
+		eeprom0_eui48: eui48@fa {
+			reg = <0xfa 0x6>;
+		};
+	};
 };
 
 &main_xtal {
@@ -269,6 +282,9 @@
 		     &pinctrl_gmac0_phy_irq>;
 	phy-mode = "rgmii-id";
 	status = "okay";
+
+	nvmem-cells = <&eeprom0_eui48>;
+	nvmem-cell-names = "mac-address";
 
 	ethernet-phy@7 {
 		reg = <0x7>;
