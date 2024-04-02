@@ -75,8 +75,22 @@
 		#size-cells = <1>;
 		ranges;
 
-		usb1: gadget@300000 {
-			compatible = "microchip,sama7d65-udc", "microchip,sam9x60-udc";
+		usb0: usb@200000 {		// AT91 USB device controller on port A
+			compatible = "microchip,sama7d65-udc", "microchip,sama7g5-udc";
+			reg = <0x00200000 0x100000>,
+			      <0xe0814000 0x400>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			interrupts = <GIC_SPI 99 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&pmc PMC_TYPE_PERIPHERAL 99>, <&pmc PMC_TYPE_CORE PMC_UTMI>;
+			clock-names = "pclk", "hclk";
+			assigned-clocks = <&pmc PMC_TYPE_CORE PMC_UTMI>;
+			assigned-clock-rates = <480000000>;
+			status = "disabled";
+		};
+
+		usb1: usb@300000 {		// AT91 USB device controller on port B
+			compatible = "microchip,sama7d65-udc", "microchip,sama7g5-udc";
 			reg = <0x300000 0x100000>,
 			      <0xe0818000 0x400>;
 			#address-cells = <1>;
