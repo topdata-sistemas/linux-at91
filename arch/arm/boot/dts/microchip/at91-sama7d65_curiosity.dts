@@ -351,9 +351,9 @@
 };
 
 &pioA {
-	pinctrl_adc_default: adc_default {
+	pinctrl_adc_default: adc-default {
 		pinmux = <PIN_PC5__GPIO>;
-		bias-disalbe;
+		bias-disable;
 	};
 
 	pinctrl_can1_default: can1-default {
