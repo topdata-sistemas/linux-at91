@@ -318,8 +318,8 @@
 			compatible = "bosch,m_can";
 			reg = <0xe0828000 0x200>, <0x100000 0x7800>;
 			reg-names = "m_can", "message_ram";
-			interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "int0", "int1";
 			clocks = <&pmc PMC_TYPE_PERIPHERAL 58>, <&pmc PMC_TYPE_GCK 58>;
 			clock-names = "hclk", "cclk";
@@ -334,8 +334,8 @@
 			compatible = "bosch,m_can";
 			reg = <0xe082c000 0x200>, <0x100000 0xbc00>;
 			reg-names = "m_can", "message_ram";
-			interrupts = <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "int0", "int1";
 			clocks = <&pmc PMC_TYPE_PERIPHERAL 59>, <&pmc PMC_TYPE_GCK 59>;
 			clock-names = "hclk", "cclk";
@@ -350,8 +350,8 @@
 			compatible = "bosch,m_can";
 			reg = <0xe0830000 0x200>, <0x100000 0x10000>;
 			reg-names = "m_can", "message_ram";
-			interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "int0", "int1";
 			clocks = <&pmc PMC_TYPE_PERIPHERAL 60>, <&pmc PMC_TYPE_GCK 60>;
 			clock-names = "hclk", "cclk";
@@ -366,8 +366,8 @@
 			compatible = "bosch,m_can";
 			reg = <0xe0834000 0x200>, <0x110000 0x4400>;
 			reg-names = "m_can", "message_ram";
-			interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "int0", "int1";
 			clocks = <&pmc PMC_TYPE_PERIPHERAL 61>, <&pmc PMC_TYPE_GCK 61>;
 			clock-names = "hclk", "cclk";
@@ -382,8 +382,8 @@
 			compatible = "bosch,m_can";
 			reg = <0xe0838000 0x200>, <0x110000 0x8800>;
 			reg-names = "m_can", "message_ram";
-			interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "int0", "int1";
 			clocks = <&pmc PMC_TYPE_PERIPHERAL 62>, <&pmc PMC_TYPE_GCK 62>;
 			clock-names = "hclk", "cclk";
@@ -572,12 +572,12 @@
 		gmac0: ethernet@e1618000 {
 			compatible = "microchip,sama7d65-gem", "microchip,sama7g5-gem";
 			reg = <0xe1618000 0x2000>;
-			interrupts = <GIC_SPI 46 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 144 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 146 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 46 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 144 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 146 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&pmc PMC_TYPE_PERIPHERAL 46>, <&pmc PMC_TYPE_PERIPHERAL 46>, <&pmc PMC_TYPE_GCK 46>, <&pmc PMC_TYPE_GCK 49>;
 			clock-names = "pclk", "hclk", "tx_clk", "tsu_clk";
 			assigned-clocks = <&pmc PMC_TYPE_GCK 46>, <&pmc PMC_TYPE_GCK 49>;
@@ -588,12 +588,12 @@
 		gmac1: ethernet@e161c000 {
 			compatible = "microchip,sama7d65-gem", "microchip,sama7g5-gem";
 			reg = <0xe161c000 0x2000>;
-			interrupts = <GIC_SPI 47 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 153 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 154 IRQ_TYPE_LEVEL_HIGH
-				      GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 47 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 153 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 154 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&pmc PMC_TYPE_PERIPHERAL 47>, <&pmc PMC_TYPE_PERIPHERAL 47>,<&pmc PMC_TYPE_GCK 47>, <&pmc PMC_TYPE_GCK 50>;
 			clock-names = "pclk", "hclk", "tx_clk", "tsu_clk";
 			assigned-clocks = <&pmc PMC_TYPE_GCK 47>, <&pmc PMC_TYPE_GCK 50>;
