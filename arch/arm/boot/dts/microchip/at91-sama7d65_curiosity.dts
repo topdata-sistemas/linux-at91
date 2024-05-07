@@ -132,8 +132,11 @@
 
 &i2c10 {
 	dmas = <0>, <0>;
-	pinctrl-names = "default";
+	pinctrl-names = "default", "gpio";
 	pinctrl-0 = <&pinctrl_i2c10_default>;
+	pinctrl-1 = <&pinctrl_i2c10_gpio>;
+	sda-gpios = <&pioA PIN_PB19 GPIO_ACTIVE_HIGH>;
+	scl-gpios = <&pioA PIN_PB20 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 	i2c-analog-filter;
 	i2c-digital-filter;
 	i2c-digital-filter-width-ns = <35>;
@@ -459,6 +462,12 @@
 	pinctrl_i2c10_default: i2c10-default{
 		pinmux = <PIN_PB19__FLEXCOM10_IO1>,
 			 <PIN_PB20__FLEXCOM10_IO0>;
+		bias-disable;
+	};
+
+	pinctrl_i2c10_gpio: i2c10-gpio{
+		pinmux = <PIN_PB19__GPIO>,
+			 <PIN_PB20__GPIO>;
 		bias-disable;
 	};
 
