@@ -232,7 +232,7 @@
 		};
 
 		reset_controller: reset-controller@e001d100 {
-			compatible = "microchip,sama7d65-rstc", "microchip,sama7g5-rstc", "microchip,sam9x60-rstc";
+			compatible = "microchip,sama7d65-rstc", "microchip,sama7g5-rstc";
 			reg = <0xe001d100 0xc>, <0xe001d1e4 0x4>;
 			#reset-cells = <1>;
 			clocks = <&clk32k 0>;
