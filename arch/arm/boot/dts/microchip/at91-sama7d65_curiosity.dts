@@ -16,7 +16,7 @@
 #include <dt-bindings/sound/microchip,pdmc.h>
 
 / {
-	model = "Microchip SAMA7D65 CURIOSITY";
+	model = "Microchip SAMA7D65 Curiosity";
 	compatible = "microchip,sama7d65-curiosity", "microchip,sama7d65", "microchip,sama7d6", "microchip,sama7";
 
 	chosen {
