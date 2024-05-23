@@ -240,7 +240,7 @@
 
 		shdwc: poweroff@e001d200 {
 			compatible = "microchip,sama7d65-shdwc", "microchip,sama7g5-shdwc", "syscon";
-			reg = <0xe001d200 0x10>;
+			reg = <0xe001d200 0x20>;
 			clocks = <&clk32k 0>;
 			#address-cells = <1>;
 			#size-cells = <0>;
