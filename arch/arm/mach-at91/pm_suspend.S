@@ -894,11 +894,12 @@ e_save_mck9:
 	str	tmp2, .saved_mck9
 
 e_ps:
-	/* Use CSS=MAINCK and DIV=1. */
+	/* Use CSS=MD_SLOW_CK and DIV=64. */
 	bic	tmp2, tmp2, #AT91_PMC_MCR_V2_CSS
 	bic	tmp2, tmp2, #AT91_PMC_MCR_V2_DIV
-	orr	tmp2, tmp2, #AT91_PMC_MCR_V2_CSS_MAINCK
-	orr	tmp2, tmp2, #AT91_PMC_MCR_V2_DIV1
+	orr	tmp2, tmp2, #AT91_PMC_MCR_V2_CSS_MD_SLCK
+	orr	tmp2, tmp2, #AT91_PMC_MCR_V2_DIV64
+	orr	tmp2, tmp2, #AT91_PMC_MCR_V2_CMD
 	str	tmp2, [pmc, #AT91_PMC_MCR_V2]
 
 	wait_mckrdy tmp1
@@ -989,7 +990,7 @@ r_ps:
 	bic	tmp3, tmp3, #AT91_PMC_MCR_V2_ID_MSK
 	orr	tmp3, tmp3, tmp1
 	orr	tmp3, tmp3, #AT91_PMC_MCR_V2_CMD
-	str	tmp2, [pmc, #AT91_PMC_MCR_V2]
+	str	tmp3, [pmc, #AT91_PMC_MCR_V2]
 
 	wait_mckrdy tmp1
 
