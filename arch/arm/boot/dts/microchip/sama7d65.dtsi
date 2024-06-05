@@ -102,6 +102,11 @@
 		#size-cells = <1>;
 		reg = <0x100000 0x20000>;
 		ranges;
+
+		temp_calib_sram: tempcalib-sram@1120e0 {
+			reg = <0x1120e0 0x40>;
+			pool;
+		};
 	};
 
 	soc {
@@ -420,6 +425,8 @@
 			atmel,trigger-edge-type = <IRQ_TYPE_EDGE_RISING>;
 			atmel,startup-time-ms = <4>;
 			#io-channel-cells = <1>;
+			sram = <&temp_calib_sram>;
+			microchip,calib-on-sram;
 			status = "disabled";
 		};
 
