@@ -496,7 +496,8 @@ static struct {
 	  .ep_mux_table = { 5, 6, },
 	  .ep_count = 2,
 	  .ep_chg_id = INT_MIN,
-	  .eid = PMC_MCK3, },
+	  .eid = PMC_MCK3,
+	  .c = 1, },
 
 	{ .n = "mck4",
 	  .id = 4,
@@ -864,7 +865,7 @@ static const struct {
 
 	{ .n = "lcdc_gclk",
 	  .id = 56,
-	  .r = { .max = 100000000 },
+	  .r = { .max = 90000000 },
 	  .pp_count = 0,
 	  .pp_chg_id = INT_MIN,
 	},
