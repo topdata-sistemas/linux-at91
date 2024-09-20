@@ -50,7 +50,10 @@ static int atmel_hlcdc_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 	struct atmel_hlcdc *hlcdc = atmel->hlcdc;
 	unsigned int status;
 	int ret;
-	bool is_xlcdc = atmel->errata->is_xlcdc;
+	bool is_xlcdc = false;
+
+	if (atmel->errata)
+		is_xlcdc = atmel->errata->is_xlcdc;
 
 	if (state->enabled) {
 		struct clk *new_clk = hlcdc->slow_clk;
