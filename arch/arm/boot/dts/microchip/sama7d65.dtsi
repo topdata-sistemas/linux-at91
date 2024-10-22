@@ -248,7 +248,7 @@
 			};
 		};
 
-		securam: sram@e0000000 {
+		securam: sram@e0000800 {
 			compatible = "microchip,sama7d65-securam", "atmel,sama5d2-securam", "mmio-sram";
 			reg = <0xe0000800 0x4000>;
 			clocks = <&pmc PMC_TYPE_PERIPHERAL 17>;
