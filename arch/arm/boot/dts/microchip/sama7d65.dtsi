@@ -609,12 +609,11 @@
 			dma-names = "tx", "rx";
 		};
 
-		trng: rng@e160C000 {
-			compatible = "microchip,sama7d65-trng", "atmel,at91sam9g45-trng";
-			reg = <0xe160C000 0x100>;
+		trng: rng@e160c000 {
+			compatible = "microchip,sama7d65-trng", "microchip,sam9x60-trng";
+			reg = <0xe160c000 0x100>;
 			interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&pmc PMC_TYPE_PERIPHERAL 92>;
-			status = "disabled";
 		};
 
 		dma0: dma-controller@e1610000 {
