@@ -17,7 +17,10 @@
 	aliases {
 		i2c0 = &i2c0;
 		i2c1 = &i2c6;
-		serial2 = &uart7;
+		serial1 = &uart12;
+		serial2 = &uart2;
+		serial5 = &uart5;
+		serial7 = &uart7;		
 	};
 
 	chosen {
@@ -35,19 +38,6 @@
 
 		main_xtal {
 			clock-frequency = <24000000>;
-		};
-	};
-
-	gpio-keys {
-		compatible = "gpio-keys";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_key_gpio_default>;
-
-		button-user {
-			label = "PB_USER";
-			gpios = <&pioA 29 GPIO_ACTIVE_LOW>;
-			linux,code = <KEY_PROG1>;
-			wakeup-source;
 		};
 	};
 
@@ -104,18 +94,6 @@
 	vref-supply = <&vdd1_3v3>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_adc_default &pinctrl_adtrg_default>;
-	status = "okay";
-};
-
-&can0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_can0_rx_tx>;
-	status = "disabled"; /* Conflict with dbgu. */
-};
-
-&can1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_can1_rx_tx>;
 	status = "okay";
 };
 
@@ -213,6 +191,28 @@
 	};
 };
 
+&flx2 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
+	status = "okay";
+
+	uart2: serial@200 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_flx2_default>;
+		status = "okay";
+	};
+};
+
+&flx5 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
+	status = "okay";
+
+	uart5: serial@200 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_flx5_default>;
+		status = "okay";
+	};
+};
+
 &flx6 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
 	status = "okay";
@@ -235,6 +235,17 @@
 	uart7: serial@200 {
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_flx7_default>;
+		status = "okay";
+	};
+};
+
+&flx12 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
+	status = "okay";
+
+	uart12: serial@200 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_flx12_default>;
 		status = "okay";
 	};
 };
@@ -264,25 +275,7 @@
 			atmel,pins = <AT91_PIOB 18 AT91_PERIPH_B AT91_PINCTRL_PULL_UP>;
 		};
 	};
-
-	can0 {
-		pinctrl_can0_rx_tx: can0-rx-tx {
-			atmel,pins =
-				<AT91_PIOA 9 AT91_PERIPH_B AT91_PINCTRL_NONE	/* CANRX0 */
-				 AT91_PIOA 10 AT91_PERIPH_B AT91_PINCTRL_NONE	/* CANTX0 */
-				 AT91_PIOC 9 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN>;	/* Enable CAN Transceivers */
-		};
-	};
-
-	can1 {
-		pinctrl_can1_rx_tx: can1-rx-tx {
-			atmel,pins =
-				<AT91_PIOA 6 AT91_PERIPH_B AT91_PINCTRL_NONE	/* CANRX1 */
-				 AT91_PIOA 5 AT91_PERIPH_B AT91_PINCTRL_NONE	/* CANTX1 */
-				 AT91_PIOB 17 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN>;	/* Enable CAN Transceivers */
-		};
-	};
-
+	
 	dbgu {
 		pinctrl_dbgu: dbgu-0 {
 			atmel,pins = <AT91_PIOA 9 AT91_PERIPH_A AT91_PINCTRL_PULL_UP
@@ -317,6 +310,18 @@
 				 AT91_PIOA 1 AT91_PERIPH_A AT91_PINCTRL_PULL_UP>;
 		};
 
+		pinctrl_flx2_default: flx2-usart {
+			atmel,pins =
+				<AT91_PIOA 7 AT91_PERIPH_A AT91_PINCTRL_NONE
+				 AT91_PIOA 8 AT91_PERIPH_A AT91_PINCTRL_NONE>;
+		};
+
+		pinctrl_flx5_default: flx5-usart {
+			atmel,pins =
+				<AT91_PIOA 21 AT91_PERIPH_B AT91_PINCTRL_NONE
+				 AT91_PIOA 22 AT91_PERIPH_B AT91_PINCTRL_NONE>;
+		};
+
 		pinctrl_flx6_default: flx6-twi {
 			atmel,pins =
 				<AT91_PIOA 30 AT91_PERIPH_A AT91_PINCTRL_PULL_UP
@@ -328,11 +333,11 @@
 				<AT91_PIOC 0 AT91_PERIPH_C AT91_PINCTRL_NONE
 				 AT91_PIOC 1 AT91_PERIPH_C AT91_PINCTRL_NONE>;
 		};
-	};
 
-	gpio-keys {
-		pinctrl_key_gpio_default: pinctrl-key-gpio {
-			atmel,pins = <AT91_PIOA 29 AT91_PERIPH_GPIO AT91_PINCTRL_NONE>;
+		pinctrl_flx12_default: flx12-usart {
+			atmel,pins =
+				<AT91_PIOB 21 AT91_PERIPH_C AT91_PINCTRL_NONE
+				 AT91_PIOB 22 AT91_PERIPH_C AT91_PINCTRL_NONE>;
 		};
 	};
 
@@ -383,14 +388,6 @@
 		pinctrl_pwm0_0: pwm0-0 {
 			atmel,pins = <AT91_PIOB 12 AT91_PERIPH_B AT91_PINCTRL_NONE>;
 		};
-
-		pinctrl_pwm0_1: pwm0-1 {
-			atmel,pins = <AT91_PIOB 13 AT91_PERIPH_B AT91_PINCTRL_NONE>;
-		};
-
-		pinctrl_pwm0_2: pwm0-2 {
-			atmel,pins = <AT91_PIOD 16 AT91_PERIPH_B AT91_PINCTRL_NONE>;
-		};
 	};
 
 	sdmmc0 {
@@ -438,7 +435,7 @@
 
 &pwm0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm0_0 &pinctrl_pwm0_1 &pinctrl_pwm0_2>;
+	pinctrl-0 = <&pinctrl_pwm0_0>;
 	status = "okay";
 };
 
