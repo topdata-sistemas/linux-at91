@@ -16,11 +16,10 @@
 
 	aliases {
 		i2c0 = &i2c0;
-		i2c1 = &i2c6;
+		serial0 = &uart7;
 		serial1 = &uart12;
 		serial2 = &uart2;
 		serial5 = &uart5;
-		serial7 = &uart7;		
 	};
 
 	chosen {
@@ -213,21 +212,6 @@
 	};
 };
 
-&flx6 {
-	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
-	status = "okay";
-
-	i2c6: i2c@600 {
-		dmas = <0>, <0>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_flx6_default>;
-		i2c-analog-filter;
-		i2c-digital-filter;
-		i2c-digital-filter-width-ns = <35>;
-		status = "disabled";
-	};
-};
-
 &flx7 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
 	status = "okay";
@@ -322,12 +306,6 @@
 				 AT91_PIOA 22 AT91_PERIPH_B AT91_PINCTRL_NONE>;
 		};
 
-		pinctrl_flx6_default: flx6-twi {
-			atmel,pins =
-				<AT91_PIOA 30 AT91_PERIPH_A AT91_PINCTRL_PULL_UP
-				 AT91_PIOA 31 AT91_PERIPH_A AT91_PINCTRL_PULL_UP>;
-		};
-
 		pinctrl_flx7_default: flx7-usart {
 			atmel,pins =
 				<AT91_PIOC 0 AT91_PERIPH_C AT91_PINCTRL_NONE
@@ -390,35 +368,6 @@
 		};
 	};
 
-	sdmmc0 {
-		pinctrl_sdmmc0_default: sdmmc0 {
-			atmel,pins =
-				<AT91_PIOA 17 AT91_PERIPH_A (AT91_PINCTRL_DRIVE_STRENGTH_HI)				/* PA17 CK  periph A with pullup */
-				 AT91_PIOA 16 AT91_PERIPH_A (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)	/* PA16 CMD periph A with pullup */
-				 AT91_PIOA 15 AT91_PERIPH_A (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)	/* PA15 DAT0 periph A */
-				 AT91_PIOA 18 AT91_PERIPH_A (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)	/* PA18 DAT1 periph A with pullup */
-				 AT91_PIOA 19 AT91_PERIPH_A (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)	/* PA19 DAT2 periph A with pullup */
-				 AT91_PIOA 20 AT91_PERIPH_A (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)>;	/* PA20 DAT3 periph A with pullup */
-		};
-
-		pinctrl_sdmmc0_cd: sdmmc0-cd {
-			atmel,pins =
-				<AT91_PIOA 25 AT91_PERIPH_GPIO AT91_PINCTRL_NONE>;
-		};
-	};
-
-	sdmmc1 {
-		pinctrl_sdmmc1_default: sdmmc1 {
-			atmel,pins =
-				<AT91_PIOA 13 AT91_PERIPH_B (AT91_PINCTRL_DRIVE_STRENGTH_HI)				/* PA13 CK periph B */
-				 AT91_PIOA 12 AT91_PERIPH_B (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)	/* PA12 CMD periph B with pullup */
-				 AT91_PIOA 11 AT91_PERIPH_B (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)	/* PA11 DAT0 periph B with pullup */
-				 AT91_PIOA 2 AT91_PERIPH_B (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)	/* PA2 DAT1 periph B with pullup */
-				 AT91_PIOA 3 AT91_PERIPH_B (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)	/* PA3 DAT2 periph B with pullup */
-				 AT91_PIOA 4 AT91_PERIPH_B (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)>;	/* PA4 DAT3 periph B with pullup */
-		};
-	};
-
 	usb0 {
 		pinctrl_usba_vbus: usba-vbus {
 			atmel,pins = <AT91_PIOA 27 AT91_PERIPH_GPIO AT91_PINCTRL_NONE>;
@@ -441,23 +390,6 @@
 
 &rtt {
 	atmel,rtt-rtc-time-reg = <&gpbr 0x0>;
-};
-
-&sdmmc0 {
-	bus-width = <4>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_sdmmc0_default &pinctrl_sdmmc0_cd>;
-	cd-gpios = <&pioA 25 GPIO_ACTIVE_LOW>;
-	disable-wp;
-	status = "okay";
-};
-
-&sdmmc1 {
-	bus-width = <4>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_sdmmc1_default>;
-	disable-wp;
-	status = "okay";
 };
 
 &rtt {
